@@ -65,9 +65,14 @@ jobs:
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "${GITHUB_REF_NAME}"
-          "${PACKED_TARBALL}"
-          --repo "${GITHUB_REPOSITORY}"
-          --title "${GITHUB_REF_NAME}"
-          --generate-notes
+        run: |
+          RELEASE_FLAGS=()
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            "${PACKED_TARBALL}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            "${RELEASE_FLAGS[@]}"
