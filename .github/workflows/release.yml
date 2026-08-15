@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   package:
+    if: github.event_name != 'push' || github.event.deleted == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -106,6 +107,7 @@ jobs:
           fi
           PACKED_TARBALL=$(find package-artifact -name '*.tgz' -type f -print -quit)
           test -n "${PACKED_TARBALL}"
+          PACKED_TARBALL=$(realpath "${PACKED_TARBALL}")
           npm stage publish "${PACKED_TARBALL}" --access public --tag "${PUBLISH_TAG}"
 
   github-release:
