@@ -12,6 +12,12 @@ updates:
       - dependency-name: '@expo/*'
         update-types:
           - version-update:semver-major
+      - dependency-name: 'expo-*'
+        update-types:
+          - version-update:semver-major
+      - dependency-name: babel-preset-expo
+        update-types:
+          - version-update:semver-major
       - dependency-name: react-native
         update-types:
           - version-update:semver-major
