@@ -1,6 +1,8 @@
 appId: com.invivek26.numberanimationexample
 name: Native renderer parity transition
 ---
+- tapOn:
+    id: open-lab-button
 - scrollUntilVisible:
     element:
       id: increment-button

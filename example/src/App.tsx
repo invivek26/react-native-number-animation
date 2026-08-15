@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -13,6 +13,7 @@ import type {
   AnimationEvent,
   AnimationTiming,
 } from 'react-native-number-animation';
+import { ShowcaseScreen } from './showcase-screen';
 
 const STRESS_COUNTERS = Array.from({ length: 24 }, (_, index) => index);
 const INITIAL_VALUE = 12_345.67;
@@ -159,7 +160,11 @@ const GalleryCard = ({ children, eyebrow, testID, title }: CardProps) => (
   </View>
 );
 
-export const App = () => {
+type LabScreenProps = Readonly<{
+  onClose: () => void;
+}>;
+
+const LabScreen = ({ onClose }: LabScreenProps) => {
   const [state, dispatch] = useReducer(galleryReducer, INITIAL_STATE);
   const stressValues = useMemo(
     () =>
@@ -192,6 +197,14 @@ export const App = () => {
         testID="gallery-scroll"
       >
         <View style={styles.hero}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={styles.showcaseButton}
+            testID="close-lab-button"
+          >
+            <Text style={styles.showcaseButtonText}>Showcase</Text>
+          </Pressable>
           <Text style={styles.kicker}>NATIVE NUMBER LAB</Text>
           <Text style={styles.title}>Every digit, in motion.</Text>
           <Text style={styles.subtitle}>
@@ -429,6 +442,20 @@ export const App = () => {
   );
 };
 
+export const App = () => {
+  const [labVisible, setLabVisible] = useState(false);
+
+  if (labVisible) {
+    return <LabScreen onClose={() => setLabVisible(false)} />;
+  }
+
+  return (
+    <ShowcaseScreen
+      onOpenLab={__DEV__ ? () => setLabVisible(true) : undefined}
+    />
+  );
+};
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#07110e' },
   content: { paddingBottom: 48 },
@@ -438,6 +465,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: Platform.select({ android: 48, default: 24 }),
   },
+  showcaseButton: {
+    alignSelf: 'flex-end',
+    borderColor: '#2a5545',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  showcaseButtonText: { color: '#9eb8ac', fontSize: 11, fontWeight: '800' },
   kicker: {
     color: '#77e0ad',
     fontSize: 11,
