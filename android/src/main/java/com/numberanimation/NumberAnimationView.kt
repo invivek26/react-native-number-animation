@@ -267,20 +267,22 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
 
   private fun computeLayout(slots: List<NativeSlot>): List<LayoutTarget> {
     val visualSlots = reorderForDisplay(slots)
-    val widths = visualSlots.map(::measureSlot)
-    val contentWidth = widths.sum() + letterSpacingPx * max(0, visualSlots.size - 1)
+    val positions = NumberAnimationTextLayout.position(
+      slots = visualSlots,
+      letterSpacing = letterSpacingPx,
+      text = NativeSlot::text,
+      measure = { textPaint.measureText(it) },
+    )
+    val contentWidth = positions.lastOrNull()?.end ?: 0f
     val rtl = resolvedRightToLeft(visualSlots)
     val alignment = resolveAlignment(rtl)
-    var cursor = when (alignment) {
+    val origin = when (alignment) {
       Paint.Align.RIGHT -> width - contentWidth
       Paint.Align.CENTER -> (width - contentWidth) * 0.5f
       else -> 0f
     }
-    return visualSlots.mapIndexed { index, slot ->
-      LayoutTarget(slot, cursor, widths[index]).also {
-        cursor += widths[index]
-        if (index < visualSlots.lastIndex) cursor += letterSpacingPx
-      }
+    return positions.map { position ->
+      LayoutTarget(position.slot, origin + position.x, position.width)
     }
   }
 
@@ -381,15 +383,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     }
     baseline = (height - metrics.descent - metrics.ascent) * 0.5f
     glyphWidths.clear()
-  }
-
-  private fun measureSlot(slot: NativeSlot): Float {
-    val glyph = if (slot.isDigit) {
-      committedProps.digitGlyphs.getOrNull(slot.digitValue) ?: slot.text
-    } else {
-      slot.text
-    }
-    return measureGlyph(glyph)
   }
 
   private fun measureGlyph(glyph: String): Float = glyphWidths.getOrPut(glyph) {
