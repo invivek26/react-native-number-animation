@@ -159,6 +159,35 @@ The TypeScript types enforce these input modes.
   transition should remain visible outside the measured line.
 - Set `animated={false}` to render updates immediately.
 
+### Global animation control
+
+Use `NumberAnimationProvider` when an app-level setting, performance mode, or
+screen state needs to disable every descendant animation:
+
+```tsx
+import {
+  AnimatedNumber,
+  NumberAnimationProvider,
+} from 'react-native-number-animation';
+
+export const Portfolio = ({ animationsEnabled, total }) => (
+  <NumberAnimationProvider enabled={animationsEnabled}>
+    <AnimatedNumber value={total} />
+  </NumberAnimationProvider>
+);
+```
+
+Without a provider, animations remain enabled. Provider state and the local
+`animated` prop are both authoritative: either one can disable motion. Nested
+providers are false-dominant, so an enabled child cannot override a disabled
+ancestor.
+
+Turning the provider off during a transition immediately shows the latest
+formatted value, cancels native frame work, and does not emit a completion for
+the cancelled transition. Turning it on again does not replay that settled
+value; the next value change animates normally. Reduced Motion remains an
+additional independent constraint.
+
 Durations are milliseconds and are clamped to 0–60,000. Named easing values are
 `linear`, `easeIn`, `easeOut`, and `easeInOut`; cubic Bézier and spring objects
 are also supported.
@@ -193,6 +222,13 @@ Font scaling is enabled by default. `allowFontScaling` and
 single-line; strings containing a newline render as static text.
 
 ## API
+
+### `NumberAnimationProvider`
+
+| Prop       | Type        | Default  | Purpose                                  |
+| ---------- | ----------- | -------- | ---------------------------------------- |
+| `enabled`  | `boolean`   | required | Enables animation for the provider tree. |
+| `children` | `ReactNode` | required | Descendant number-animation components.  |
 
 ### Value and formatting
 

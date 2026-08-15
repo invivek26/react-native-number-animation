@@ -30,6 +30,11 @@ import {
   createAnimationSession,
   resolveAnimationSession,
 } from './motion/animation-session';
+import {
+  resolveAnimationState,
+  shouldHandleAnimationEvent,
+} from './motion/animation-policy';
+import { useNumberAnimationEnabled } from './number-animation-provider';
 import type { AnimatedNumberProps } from './types';
 import { useReducedMotion } from './use-reduced-motion';
 
@@ -208,8 +213,9 @@ export const AnimatedNumber = forwardRef<
   targetSessionRef.current = targetSession;
   const revision = targetSession.revision;
   const initialRevision = 0;
-  const [settledRevision, setSettledRevision] = useState(initialRevision);
+  const [, setSettledRender] = useState(initialRevision);
   const settledRevisionRef = useRef(initialRevision);
+  const providerEnabled = useNumberAnimationEnabled();
   const reduceMotion = useReducedMotion(respectMotionPreference);
   const { fontScale } = useWindowDimensions();
   const animation = useMemo(
@@ -238,8 +244,16 @@ export const AnimatedNumber = forwardRef<
   const fontSize = requestedFontSize * effectiveFontScale;
   const formattedValue = presentation.formattedValue;
   const isMultiline = formattedValue.includes('\n');
-  const nativeRendererEnabled = animated && !isMultiline;
-  const active = animated && !isMultiline && revision !== settledRevision;
+  const { active, rendererEnabled: nativeRendererEnabled } =
+    resolveAnimationState({
+      animated,
+      isMultiline,
+      providerEnabled,
+      revision,
+      settledRevision: settledRevisionRef.current,
+    });
+  const nativeRendererEnabledRef = useRef(nativeRendererEnabled);
+  nativeRendererEnabledRef.current = nativeRendererEnabled;
   const latestCompletionCallback = useRef(onAnimationComplete);
   const latestStartCallback = useRef(onAnimationStart);
   latestCompletionCallback.current = onAnimationComplete;
@@ -251,12 +265,11 @@ export const AnimatedNumber = forwardRef<
   }, [presentation]);
 
   useLayoutEffect(() => {
-    if ((animated && !isMultiline) || settledRevisionRef.current === revision) {
+    if (nativeRendererEnabled || settledRevisionRef.current === revision) {
       return;
     }
     settledRevisionRef.current = revision;
-    setSettledRevision(revision);
-  }, [animated, isMultiline, revision]);
+  }, [nativeRendererEnabled, revision]);
 
   useEffect(() => {
     if (!active) {
@@ -268,7 +281,7 @@ export const AnimatedNumber = forwardRef<
         return;
       }
       settledRevisionRef.current = revision;
-      setSettledRevision(revision);
+      setSettledRender((render) => render + 1);
       latestCompletionCallback.current?.(targetSession.event);
     }, animationTimeout);
 
@@ -276,20 +289,32 @@ export const AnimatedNumber = forwardRef<
   }, [active, animationTimeout, revision, targetSession.event]);
 
   const handleAnimationStart = ({ nativeEvent }: NativeEvent) => {
-    if (nativeEvent.revision === revision) {
-      latestStartCallback.current?.(targetSession.event);
+    if (
+      !shouldHandleAnimationEvent({
+        eventRevision: nativeEvent.revision,
+        rendererEnabled: nativeRendererEnabledRef.current,
+        revision,
+        settledRevision: settledRevisionRef.current,
+      })
+    ) {
+      return;
     }
+    latestStartCallback.current?.(targetSession.event);
   };
 
   const handleAnimationComplete = ({ nativeEvent }: NativeEvent) => {
     if (
-      nativeEvent.revision !== revision ||
-      settledRevisionRef.current === revision
+      !shouldHandleAnimationEvent({
+        eventRevision: nativeEvent.revision,
+        rendererEnabled: nativeRendererEnabledRef.current,
+        revision,
+        settledRevision: settledRevisionRef.current,
+      })
     ) {
       return;
     }
     settledRevisionRef.current = revision;
-    setSettledRevision(revision);
+    setSettledRender((render) => render + 1);
     latestCompletionCallback.current?.(targetSession.event);
   };
 

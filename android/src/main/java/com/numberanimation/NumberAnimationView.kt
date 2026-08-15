@@ -189,7 +189,7 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
   }
 
   override fun onDetachedFromWindow() {
-    settleAndComplete()
+    settleAndCancel()
     super.onDetachedFromWindow()
   }
 
@@ -421,6 +421,14 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     stopFrames()
     invalidate()
     finishSession()
+  }
+
+  private fun settleAndCancel() {
+    settleAll()
+    stopFrames()
+    sessionRunning = false
+    activeRevision = null
+    invalidate()
   }
 
   private fun finishSession() {

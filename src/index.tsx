@@ -1,4 +1,6 @@
 export { AnimatedNumber } from './animated-number';
+export { NumberAnimationProvider } from './number-animation-provider';
+export type { NumberAnimationProviderProps } from './number-animation-provider';
 export type {
   AnimatedNumberAnimation,
   AnimatedNumberProps,

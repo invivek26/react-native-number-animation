@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { NumberAnimationProvider } from '../number-animation-provider';
 import type {
   AnimationEasing,
   CubicBezierEasing,
+  NumberAnimationProviderProps,
   SpringEasing,
 } from '../index';
 import type { AnimatedNumberProps } from '../types';
@@ -19,6 +22,10 @@ const spring: SpringEasing = {
   stiffness: 160,
 };
 const easings: readonly AnimationEasing[] = [cubicBezier, spring, 'linear'];
+const providerProps = {
+  children: createElement('div'),
+  enabled: false,
+} satisfies NumberAnimationProviderProps;
 
 const intlProps = {
   format: { currency: 'USD', style: 'currency' },
@@ -71,4 +78,6 @@ test('accepts each public formatting mode', () => {
   expect(invalidStyleProps.value).toBe(42);
   expect(typeof invalidValueProps.value).toBe('string');
   expect(easings).toHaveLength(3);
+  expect(NumberAnimationProvider).toBeFunction();
+  expect(providerProps.enabled).toBe(false);
 });
