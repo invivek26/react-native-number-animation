@@ -4,6 +4,35 @@ A native rolling-number component for React Native's New Architecture. It keeps
 digit, layout, and opacity motion on the native UI thread while React owns
 formatting and transition intent.
 
+## Native on both platforms
+
+<table>
+  <thead>
+    <tr>
+      <th>iOS · Core Animation</th>
+      <th>Android · Canvas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <img
+          src="https://raw.githubusercontent.com/invivek26/react-native-number-animation/main/docs/assets/ios-showcase.webp"
+          alt="Native rolling-number animations on iOS"
+          width="420"
+        />
+      </td>
+      <td>
+        <img
+          src="https://raw.githubusercontent.com/invivek26/react-native-number-animation/main/docs/assets/android-showcase.webp"
+          alt="Native rolling-number animations on Android"
+          width="420"
+        />
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ## Compatibility
 
 | Requirement  | Supported                                   |
