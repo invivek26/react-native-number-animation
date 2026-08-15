@@ -1,0 +1,47 @@
+appId: com.invivek26.numberanimationexample
+name: Android gallery smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Development Build
+    timeout: 10000
+- openLink: number-animation-example://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8082
+- tapOn:
+    text: Continue
+    optional: true
+- tapOn:
+    text: Close
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: gallery-screen
+    timeout: 30000
+- assertVisible:
+    id: hero-number
+- tapOn:
+    id: increment-button
+- scrollUntilVisible:
+    element:
+      id: carry-button
+    direction: DOWN
+- tapOn:
+    id: carry-button
+- scrollUntilVisible:
+    element:
+      id: locale-card
+    direction: DOWN
+- assertVisible:
+    id: arabic-number
+- scrollUntilVisible:
+    element:
+      id: reduced-motion-number
+    direction: DOWN
+- assertVisible:
+    id: static-number
+- scrollUntilVisible:
+    element:
+      id: gallery-end
+    direction: DOWN
+- assertVisible:
+    id: stress-number-24

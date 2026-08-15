@@ -1,0 +1,48 @@
+appId: com.invivek26.numberanimationexample
+name: iOS gallery smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Development Build
+    timeout: 10000
+- openLink: number-animation-example://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8082
+- tapOn:
+    text: Open
+    optional: true
+- tapOn:
+    text: Continue
+    optional: true
+- tapOn:
+    text: Close
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: gallery-screen
+    timeout: 30000
+- assertVisible:
+    id: hero-number
+- tapOn:
+    id: increment-button
+- tapOn:
+    id: decrement-button
+- scrollUntilVisible:
+    element:
+      id: carry-button
+    direction: DOWN
+- tapOn:
+    id: carry-button
+- scrollUntilVisible:
+    element:
+      id: timing-card
+    direction: DOWN
+- assertVisible:
+    id: reduced-motion-number
+- assertVisible:
+    id: static-number
+- scrollUntilVisible:
+    element:
+      id: gallery-end
+    direction: DOWN
+- assertVisible:
+    id: stress-number-24

@@ -20,6 +20,8 @@ body:
           required: true
         - label: I tested using a [supported version](https://github.com/reactwg/react-native-releases/blob/main/docs/support.md) of react native.
           required: true
+        - label: I reproduced this in a development build or bare app, not Expo Go.
+          required: true
         - label: I checked for possible duplicate issues, with possible answers.
           required: true
   - type: textarea
@@ -36,7 +38,7 @@ body:
     attributes:
       label: Library version
       description: What version of the library are you using?
-      placeholder: "x.x.x"
+      placeholder: 'x.x.x'
     validations:
       required: true
   - type: textarea
@@ -47,6 +49,29 @@ body:
       render: shell
     validations:
       required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS 17+
+        - Android API 24+
+        - Web static fallback
+    validations:
+      required: true
+  - type: input
+    id: expo-version
+    attributes:
+      label: Expo version and build type
+      description: For Expo, provide the SDK version and whether this is a local or EAS development/production build.
+      placeholder: Expo SDK 56 development build
+  - type: checkboxes
+    id: architecture
+    attributes:
+      label: Architecture
+      options:
+        - label: The New Architecture is enabled.
+          required: true
   - type: textarea
     id: steps-to-reproduce
     attributes:
@@ -61,7 +86,7 @@ body:
   - type: input
     id: reproducible-example
     attributes:
-      label: Reproducible example repository 
+      label: Reproducible example repository
       description: Please provide a link to a repository on GitHub with a reproducible example.
     validations:
       required: true

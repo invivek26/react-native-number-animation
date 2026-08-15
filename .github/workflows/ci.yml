@@ -1,170 +1,232 @@
 name: CI
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   merge_group:
-    types:
-      - checks_requested
+    types: [checks_requested]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
+  library:
+    name: Check, types, tests, build, and codegen
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Setup
+      - name: Set up workspace
         uses: ./.github/actions/setup
 
-      - name: Lint files
-        run: yarn lint
+      - name: Check formatting and lint
+        run: bun run format:check && bun run lint
 
-      - name: Typecheck files
-        run: yarn typecheck
+      - name: Check types
+        run: bun run typecheck
 
+      - name: Run tests
+        run: bun test
 
-  build-library:
+      - name: Build distributable files
+        run: bun run build
+
+      - name: Generate Android Fabric artifacts
+        run: >-
+          bun node_modules/react-native/scripts/generate-codegen-artifacts.js
+          --path .
+          --targetPlatform android
+          --outputPath "${RUNNER_TEMP}/codegen"
+
+      - name: Verify generated component bindings
+        run: >-
+          test -f
+          "${RUNNER_TEMP}/codegen/android/app/build/generated/source/codegen/jni/react/renderer/components/NumberAnimationViewSpec/ComponentDescriptors.h"
+
+  package-consumer:
+    name: Packed tarball consumer
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Setup
+      - name: Set up workspace
         uses: ./.github/actions/setup
 
-      - name: Build package
-        run: yarn prepare
-
-  build-android:
-    runs-on: ubuntu-latest
-
-    env:
-      TURBO_CACHE_DIR: .turbo/android
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Cache turborepo for Android
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        with:
-          path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-turborepo-android-
-
-      - name: Check turborepo cache for Android
+      - name: Build and pack the exact publish artifact
         run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:android').cache.status")
+          bun run build
+          PACKED_TARBALL=$(bun pm pack --ignore-scripts --destination "${RUNNER_TEMP}" --quiet | tail -n 1)
+          echo "PACKED_TARBALL=${PACKED_TARBALL}" >> "${GITHUB_ENV}"
 
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
+      - name: Inspect package contents
+        run: |
+          tar -tzf "${PACKED_TARBALL}" > "${RUNNER_TEMP}/package-files.txt"
+          grep -qx 'package/package.json' "${RUNNER_TEMP}/package-files.txt"
+          grep -qx 'package/lib/module/index.js' "${RUNNER_TEMP}/package-files.txt"
+          grep -qx 'package/lib/typescript/src/index.d.ts' "${RUNNER_TEMP}/package-files.txt"
+          grep -qx 'package/NumberAnimation.podspec' "${RUNNER_TEMP}/package-files.txt"
+          if grep -Eq '(^|/)(node_modules|example|.*\.test\.)' "${RUNNER_TEMP}/package-files.txt"; then
+            echo 'The package contains development-only files.' >&2
+            exit 1
           fi
 
-      - name: Install JDK
-        if: env.turbo_cache_hit != 1
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Install tarball in a clean consumer
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir package-consumer
+          cd package-consumer
+          bun init -y
+          bun add --exact "${PACKED_TARBALL}" react@19.2.3 react-native@0.85.3
+          test -f node_modules/react-native-number-animation/lib/module/index.js
+          test -f node_modules/react-native-number-animation/lib/typescript/src/index.d.ts
+          bun -e "const pkg = require('./node_modules/react-native-number-animation/package.json'); if (!pkg.exports?.['.'] || !pkg.codegenConfig) process.exit(1)"
+          cat > index.ts <<'EOF'
+          import {
+            AnimatedNumber,
+            type AnimatedNumberProps,
+          } from 'react-native-number-animation';
+
+          const props: AnimatedNumberProps = { value: 1_234 };
+          void AnimatedNumber;
+          void props;
+          EOF
+          bunx tsc --noEmit --skipLibCheck --module preserve --moduleResolution bundler --target esnext index.ts
+
+  android:
+    name: Expo 56 / Android 24+ / New Architecture
+    runs-on: ubuntu-latest
+    env:
+      ORG_GRADLE_PROJECT_newArchEnabled: 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: temurin
           java-version: '17'
 
-      - name: Finalize Android SDK
-        if: env.turbo_cache_hit != 1
-        run: |
-          /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Prebuild expo app for Android
-        if: env.turbo_cache_hit != 1
-        run: |
-          yarn example expo prebuild --platform android
+      - name: Generate Expo Android project
+        working-directory: example
+        run: bunx expo prebuild --clean --no-install --platform android
 
-      - name: Cache Gradle
-        if: env.turbo_cache_hit != 1
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      - name: Build Android debug app
+        run: bun run --cwd example build:android
+
+  ios:
+    name: Expo 56 / iOS 17+ / New Architecture
+    runs-on: macos-15
+    env:
+      RCT_NEW_ARCH_ENABLED: '1'
+      RCT_REMOVE_LEGACY_ARCH: '1'
+      RCT_USE_PREBUILT_RNCORE: '1'
+      RCT_USE_RN_DEP: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/wrapper
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('example/android/gradle/wrapper/gradle-wrapper.properties') }}
+            ~/.cocoapods
+            example/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('bun.lock', 'NumberAnimation.podspec', 'example/app.json') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-pods-
 
-      - name: Build example for Android
-        env:
-          JAVA_OPTS: "-XX:MaxHeapSize=6g"
-        run: |
-          yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+      - name: Generate Expo iOS project
+        working-directory: example
+        run: bunx expo prebuild --clean --platform ios
 
-  build-ios:
-    runs-on: macos-latest
+      - name: Build iOS simulator app
+        working-directory: example
+        run: >-
+          xcodebuild
+          IPHONEOS_DEPLOYMENT_TARGET=17.0
+          ONLY_ACTIVE_ARCH=YES
+          -workspace ios/NumberAnimationExample.xcworkspace
+          -UseNewBuildSystem=YES
+          -scheme NumberAnimationExample
+          -configuration Debug
+          -sdk iphonesimulator
+          -derivedDataPath ios/build
+          -quiet
 
+  ios-static-frameworks:
+    name: iOS static frameworks
+    runs-on: macos-15
     env:
-      XCODE_VERSION: 26
-      TURBO_CACHE_DIR: .turbo/ios
-      RCT_USE_RN_DEP: 1
-      RCT_USE_PREBUILT_RNCORE: 1
-
+      RCT_NEW_ARCH_ENABLED: '1'
+      RCT_REMOVE_LEGACY_ARCH: '1'
+      USE_FRAMEWORKS: static
     steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Setup
+      - name: Set up workspace
         uses: ./.github/actions/setup
 
-      - name: Cache turborepo for iOS
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
         with:
-          path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock') }}
+          path: ~/.cocoapods
+          key: ${{ runner.os }}-static-pods-${{ hashFiles('bun.lock', 'NumberAnimation.podspec', 'example/app.json') }}
           restore-keys: |
-            ${{ runner.os }}-turborepo-ios-
+            ${{ runner.os }}-static-pods-
 
-      - name: Check turborepo cache for iOS
-        run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
+      - name: Generate Expo iOS project
+        working-directory: example
+        run: bunx expo prebuild --clean --no-install --platform ios
 
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
-          fi
+      - name: Install static-framework pods
+        working-directory: example/ios
+        run: pod install
 
-      - name: Use appropriate Xcode version
-        if: env.turbo_cache_hit != 1
-        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-        with:
-          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Build iOS simulator app with static frameworks
+        working-directory: example
+        run: >-
+          xcodebuild
+          IPHONEOS_DEPLOYMENT_TARGET=17.0
+          ONLY_ACTIVE_ARCH=YES
+          -workspace ios/NumberAnimationExample.xcworkspace
+          -UseNewBuildSystem=YES
+          -scheme NumberAnimationExample
+          -configuration Debug
+          -sdk iphonesimulator
+          -derivedDataPath ios/build
+          -quiet
 
-      - name: Prebuild expo app for iOS
-        if: env.turbo_cache_hit != 1
-        run: |
-          yarn example expo prebuild --platform ios
-
-      - name: Build example for iOS
-        run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
-
-  build-web:
+  web:
+    name: Expo 56 web export
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-      - name: Setup
+      - name: Set up workspace
         uses: ./.github/actions/setup
 
-      - name: Build example for Web
-        run: |
-          yarn example build:web
+      - name: Export web app
+        run: bun run --cwd example build:web
+
+      - name: Verify web output
+        run: test -f example/dist/index.html

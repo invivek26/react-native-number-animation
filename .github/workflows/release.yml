@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Prepare a Changesets version PR or only build a package artifact
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - version-pr
+      channel:
+        description: Stable release or next prerelease
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - next
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version-pr:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'version-pr'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+
+      - name: Select Changesets release channel
+        env:
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: |
+          if [[ "${RELEASE_CHANNEL}" == 'next' && ! -f .changeset/pre.json ]]; then
+            bun changeset pre enter next
+          fi
+          if [[ "${RELEASE_CHANNEL}" == 'stable' && -f .changeset/pre.json ]]; then
+            bun changeset pre exit
+          fi
+          bun changeset version
+
+      - name: Open or update version pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: changesets/${{ inputs.channel }}
+          commit-message: 'chore: version packages for ${{ inputs.channel }}'
+          title: 'chore: version packages for ${{ inputs.channel }}'
+          body: |
+            Automated Changesets version update for the `${{ inputs.channel }}` channel.
+
+            Merging this pull request does not publish to npm. Publishing remains a manual maintainer action.
+          delete-branch: true
+
+  package:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'dry-run')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+
+      - name: Verify and build
+        run: bun run check
+
+      - name: Pack without publishing
+        run: |
+          PACKED_TARBALL=$(bun pm pack --ignore-scripts --destination "${RUNNER_TEMP}" --quiet | tail -n 1)
+          echo "PACKED_TARBALL=${PACKED_TARBALL}" >> "${GITHUB_ENV}"
+
+      - name: Upload dry-run package
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-number-animation-${{ inputs.channel }}
+          path: ${{ env.PACKED_TARBALL }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create GitHub release for tag
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          "${PACKED_TARBALL}"
+          --repo "${GITHUB_REPOSITORY}"
+          --title "${GITHUB_REF_NAME}"
+          --generate-notes

@@ -1,0 +1,53 @@
+appId: com.invivek26.numberanimationexample
+name: iOS rapid update stress
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Development Build
+    timeout: 10000
+- openLink: number-animation-example://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8082
+- tapOn:
+    text: Open
+    optional: true
+- tapOn:
+    text: Continue
+    optional: true
+- tapOn:
+    text: Close
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: gallery-screen
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: rapid-button
+    direction: UP
+- tapOn:
+    id: reset-button
+- tapOn:
+    id: rapid-button
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          direction: UP
+          duration: 250
+          waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    notVisible:
+      id: stop-rapid-button
+    timeout: 30000
+- assertVisible:
+    id: stress-number-24
+- repeat:
+    times: 12
+    commands:
+      - swipe:
+          direction: DOWN
+          duration: 250
+          waitToSettleTimeoutMs: 0
+- assertVisible: READY.*
+- assertVisible:
+    id: hero-number

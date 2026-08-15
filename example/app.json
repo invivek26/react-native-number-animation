@@ -2,13 +2,15 @@
   "expo": {
     "name": "NumberAnimation Example",
     "slug": "react-native-number-animation-example",
+    "scheme": "number-animation-example",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "numberanimation.example"
+      "deploymentTarget": "17.0",
+      "bundleIdentifier": "com.invivek26.numberanimationexample"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,10 +19,24 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "numberanimation.example"
+      "package": "com.invivek26.numberanimationexample"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ]
   }
 }

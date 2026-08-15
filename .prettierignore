@@ -1,0 +1,7 @@
+example/android/
+example/dist/
+example/ios/
+NumberAnimation.abi.json
+NumberAnimation.swiftdoc
+NumberAnimation.swiftmodule
+NumberAnimation.swiftsourceinfo

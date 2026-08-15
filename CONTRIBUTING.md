@@ -1,109 +1,105 @@
 # Contributing
 
-Contributions are always welcome, no matter how large or small!
+Contributions are welcome. By participating, you agree to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
-We want this community to be friendly and respectful to each other. Please follow it in all your interactions with the project. Before contributing, please read the [code of conduct](./CODE_OF_CONDUCT.md).
+## Prerequisites
 
-## Development workflow
+- Bun 1.3.11 (the version pinned in `package.json`)
+- Node.js 20.19.4 or newer for React Native and Expo tooling
+- Android Studio and JDK 17 for Android native work
+- macOS and an Xcode version supported by Expo SDK 56 for iOS native work
+- CocoaPods for iOS dependency installation
 
-This project is a monorepo managed using [Yarn workspaces](https://yarnpkg.com/features/workspaces). It contains the following packages:
+This repository uses Bun workspaces. Do not use npm, Yarn, or pnpm to install or
+change dependencies.
 
-- The library package in the root directory.
-- An example app in the `example/` directory.
-
-To get started with the project, make sure you have the correct version of [Node.js](https://nodejs.org/) installed. See the [`.nvmrc`](./.nvmrc) file for the version used in this project.
-
-Run `yarn` in the root directory to install the required dependencies for each package:
-
-```sh
-yarn
-```
-
-> Since the project relies on Yarn workspaces, you cannot use [`npm`](https://github.com/npm/cli) for development without manually migrating.
-
-The [example app](/example/) demonstrates usage of the library. You need to run it to test any changes you make.
-
-It is configured to use the local version of the library, so any changes you make to the library's source code will be reflected in the example app. Changes to the library's JavaScript code will be reflected in the example app without a rebuild, but native code changes will require a rebuild of the example app.
-
-If you want to use Android Studio or Xcode to edit the native code, you can open the `example/android` or `example/ios` directories respectively in those editors. To edit the Objective-C or Swift files, open `example/ios/NumberAnimationExample.xcworkspace` in Xcode and find the source files at `Pods > Development Pods > react-native-number-animation`.
-
-To edit the Java or Kotlin files, open `example/android` in Android studio and find the source files at `react-native-number-animation` under `Android`.
-
-You can use various commands from the root directory to work with the project.
-
-To start the packager:
+## Set up
 
 ```sh
-yarn example start
+git clone https://github.com/invivek26/react-native-number-animation.git
+cd react-native-number-animation
+bun install --frozen-lockfile
 ```
 
-To run the example app on Android:
+The root is the library and `example/` is an Expo SDK 56 development-build app
+linked to the local package. Expo Go cannot load the native Fabric component.
 
 ```sh
-yarn example android
+cd example
+bunx expo prebuild
+bun run ios
+# or: bun run android
 ```
 
-To run the example app on iOS:
+JavaScript changes are picked up by Metro. Rebuild the development app after
+changing `ios/`, `android/`, the podspec, or the codegen component specification.
+
+## Validate a change
+
+Run the same aggregate check used for release artifacts:
 
 ```sh
-yarn example ios
+bun run check
 ```
 
-To confirm that the app is running with the new architecture, you can check the Metro logs for a message like this:
+That checks formatting, lint, strict TypeScript, Bun tests, and the distributable
+build. Useful focused commands are:
 
 ```sh
-Running "NumberAnimationExample" with {"fabric":true,"initialProps":{"concurrentRoot":true},"rootTag":1}
+bun run format:check
+bun run lint
+bun run typecheck
+bun test
+bun run build
+bun run --cwd example build:web
 ```
 
-Note the `"fabric":true` and `"concurrentRoot":true` properties.
+CI additionally regenerates Fabric bindings, packs the publish tarball and
+installs that exact file into a clean consumer, prebuilds and compiles the Expo
+56 Android and iOS apps, verifies CocoaPods static frameworks, and exports web.
 
-To run the example app on Web:
+## Native and architecture expectations
+
+The supported baseline is React Native 0.85+, iOS 17+, Android API 24+, and the
+New Architecture only. Preserve the static web fallback and accessibility
+semantics when changing native behavior. Test rapid interrupted updates,
+reduced motion, dynamic type/font scaling, right-to-left layout, locale-specific
+digits, and both cubic Bézier and spring timing when relevant.
+
+Frame-by-frame work belongs in the native renderer. Keep JavaScript responsible
+for formatting and transition planning, and avoid adding per-frame bridge
+traffic or React renders. Include before/after profile evidence with changes
+that claim a performance improvement.
+
+## Changesets
+
+Add a changeset for user-visible changes:
 
 ```sh
-yarn example web
+bun changeset
 ```
 
-Make sure your code passes TypeScript:
+Use:
 
-```sh
-yarn typecheck
-```
+- `patch` for compatible fixes and performance improvements;
+- `minor` for backward-compatible API additions;
+- `major` for breaking API, behavior, or compatibility changes.
 
-To check for linting errors, run the following:
+CI, tests, and contributor-documentation-only changes do not require a
+changeset. Maintainers use the Release workflow for stable and `next` version
+pull requests. That workflow does not publish to npm.
 
-```sh
-yarn lint
-```
+## Pull requests
 
-To fix formatting errors, run the following:
+- Keep each pull request focused and describe the observable behavior.
+- Add or update tests for motion planning and formatting logic.
+- Document public API and compatibility changes.
+- Confirm `bun run check` passes.
+- Never commit generated native projects under `example/android` or
+  `example/ios`, build directories, or package tarballs.
+- Open an issue or discussion before a large API or architecture change.
 
-```sh
-yarn lint --fix
-```
-
-
-
-### Scripts
-
-The `package.json` file contains various scripts for common tasks:
-
-- `yarn`: setup project by installing dependencies.
-- `yarn typecheck`: type-check files with TypeScript.
-  - `yarn lint`: lint files with [ESLint](https://eslint.org/).
-    - `yarn example start`: start the Metro server for the example app.
-- `yarn example android`: run the example app on Android.
-- `yarn example ios`: run the example app on iOS.
-  - `yarn example web`: run the example app on Web.
-- `yarn example build:web`: build the example app for Web.
-  
-### Sending a pull request
-
-> **Working on your first pull request?** You can learn how from this _free_ series: [How to Contribute to an Open Source Project on GitHub](https://app.egghead.io/playlists/how-to-contribute-to-an-open-source-project-on-github).
-
-When you're sending a pull request:
-
-- Prefer small pull requests focused on one change.
-- Verify that linters and tests are passing.
-- Review the documentation to make sure it looks good.
-- Follow the pull request template when opening a pull request.
-- For pull requests that change the API or implementation, discuss with maintainers first by opening an issue.
+Please report security-sensitive issues privately to
+[vivek@gamestock.app](mailto:vivek@gamestock.app) instead of opening a public
+issue.
