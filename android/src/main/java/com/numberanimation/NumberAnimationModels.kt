@@ -50,7 +50,7 @@ internal data class RendererProps(
   var textColor: Int = DEFAULT_TEXT_COLOR,
   var fontFamily: String? = null,
   var fontSize: Float = DEFAULT_FONT_SIZE,
-  var fontWeight: String = "normal",
+  var fontWeight: String? = null,
   var italic: Boolean = false,
   var fontVariant: List<String> = emptyList(),
   var letterSpacing: Float = 0f,

@@ -73,7 +73,7 @@ import UIKit
   public var textColor = UIColor.label
   public var fontFamily: String?
   public var fontSize: CGFloat = 14
-  public var fontWeight = "normal"
+  public var fontWeight: String?
   public var italic = false
   public var fontVariant: [String] = []
   public var resolvedFont: UIFont?
@@ -471,7 +471,7 @@ private enum GlyphRenderer {
     TypographyKey(
       family: configuration.fontFamily ?? "",
       size: configuration.fontSize,
-      weight: configuration.fontWeight,
+      weight: configuration.fontWeight ?? "",
       italic: configuration.italic,
       variants: configuration.fontVariant.joined(separator: ","),
       resolvedFontName: configuration.resolvedFont?.fontName ?? "",
@@ -525,8 +525,8 @@ private enum GlyphRenderer {
     )
   }
 
-  private static func uiFontWeight(_ value: String) -> UIFont.Weight {
-    switch value.lowercased() {
+  private static func uiFontWeight(_ value: String?) -> UIFont.Weight {
+    switch value?.lowercased() {
     case "100", "ultralight": return .ultraLight
     case "200", "thin": return .thin
     case "300", "light": return .light

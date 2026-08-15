@@ -108,7 +108,7 @@ class NumberAnimationViewManager : SimpleViewManager<NumberAnimationView>(),
 
   @ReactProp(name = "fontWeight")
   override fun setFontWeight(view: NumberAnimationView, value: String?) {
-    view.pendingProps.fontWeight = value ?: "normal"
+    view.pendingProps.fontWeight = value
   }
 
   @ReactProp(name = "italic")

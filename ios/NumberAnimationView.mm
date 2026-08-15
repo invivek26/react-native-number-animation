@@ -119,7 +119,8 @@ static NSArray<NSString *> *NumberAnimationMakeStrings(const std::vector<std::st
   configuration.textColor = RCTUIColorFromSharedColor(newProps.textColor) ?: UIColor.labelColor;
   configuration.fontFamily = newProps.fontFamily.empty() ? nil : RCTNSStringFromString(newProps.fontFamily);
   configuration.fontSize = newProps.fontSize;
-  configuration.fontWeight = RCTNSStringFromString(newProps.fontWeight);
+  configuration.fontWeight =
+      newProps.fontWeight.empty() ? nil : RCTNSStringFromString(newProps.fontWeight);
   configuration.italic = newProps.italic;
   configuration.fontVariant = NumberAnimationMakeStrings(newProps.fontVariant);
   configuration.resolvedFont = [RCTFont updateFont:nil

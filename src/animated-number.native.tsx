@@ -36,6 +36,7 @@ import {
 } from './motion/animation-policy';
 import { useNumberAnimationEnabled } from './number-animation-provider';
 import type { AnimatedNumberProps } from './types';
+import { resolveNativeFontWeight } from './typography';
 import { useReducedMotion } from './use-reduced-motion';
 
 type NativeEvent = NativeSyntheticEvent<Readonly<{ revision: number }>>;
@@ -349,7 +350,7 @@ export const AnimatedNumber = forwardRef<
                 ? [flattenedStyle.fontVariant]
                 : []
           }
-          fontWeight={String(flattenedStyle.fontWeight ?? 'normal')}
+          fontWeight={resolveNativeFontWeight(flattenedStyle.fontWeight)}
           formattedValue={formattedValue}
           initialSlots={toInitialNativeSlots(
             initialPresentation ?? committedPresentation.current

@@ -369,7 +369,7 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     textPaint.typeface = ReactTypefaceUtils.applyStyles(
       null,
       if (committedProps.italic) Typeface.ITALIC else Typeface.NORMAL,
-      resolveFontWeight(committedProps.fontWeight),
+      ReactTypefaceUtils.parseFontWeight(committedProps.fontWeight),
       committedProps.fontFamily,
       context.assets,
     )
@@ -515,13 +515,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     const val VERTICAL_FADE_RATIO = 0.22f
     const val MAX_FADE_RATIO = 0.48f
     val DST_IN = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-
-    fun resolveFontWeight(weightValue: String): Int =
-      when (weightValue) {
-        "bold" -> 700
-        "normal" -> 400
-        else -> weightValue.toIntOrNull()?.coerceIn(100, 900) ?: 400
-      }
 
     fun resolveFontFeatures(variants: List<String>): String? {
       if (variants.isEmpty()) return null
