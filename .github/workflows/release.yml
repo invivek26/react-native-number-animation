@@ -57,7 +57,7 @@ jobs:
           bun changeset version
 
       - name: Open or update version pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: changesets/${{ inputs.channel }}
           commit-message: 'chore: version packages for ${{ inputs.channel }}'
