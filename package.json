@@ -1,6 +1,6 @@
 {
   "name": "react-native-number-animation",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "High-performance native rolling number animations for React Native",
   "main": "./lib/module/index.js",
   "react-native": "./src/index.tsx",
