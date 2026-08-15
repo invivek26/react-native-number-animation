@@ -148,15 +148,17 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     super.onDraw(canvas)
     if (width <= 0 || height <= 0) return
 
-    val layer = if (committedProps.mask) {
-      canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
-    } else {
-      canvas.save()
+    if (!committedProps.mask) {
+      drawSlots(canvas, drawDigits = true)
+      drawSlots(canvas, drawDigits = false)
+      return
     }
-    exitingSlots.forEach { drawSlot(canvas, it) }
-    activeSlots.values.forEach { drawSlot(canvas, it) }
-    if (committedProps.mask) drawMask(canvas)
+
+    val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+    drawSlots(canvas, drawDigits = true)
+    drawMask(canvas)
     canvas.restoreToCount(layer)
+    drawSlots(canvas, drawDigits = false)
   }
 
   override fun doFrame(frameTimeNanos: Long) {
@@ -298,6 +300,15 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     "left" -> Paint.Align.LEFT
     "end" -> if (rtl) Paint.Align.LEFT else Paint.Align.RIGHT
     else -> if (rtl) Paint.Align.RIGHT else Paint.Align.LEFT
+  }
+
+  private fun drawSlots(canvas: Canvas, drawDigits: Boolean) {
+    exitingSlots.forEach { slot ->
+      if (slot.isDigit == drawDigits) drawSlot(canvas, slot)
+    }
+    activeSlots.values.forEach { slot ->
+      if (slot.isDigit == drawDigits) drawSlot(canvas, slot)
+    }
   }
 
   private fun drawSlot(canvas: Canvas, slot: RenderSlot) {
