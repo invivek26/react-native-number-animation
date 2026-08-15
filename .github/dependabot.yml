@@ -2,13 +2,34 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    open-pull-requests-limit: 5
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: expo
+        update-types:
+          - version-update:semver-major
+      - dependency-name: '@expo/*'
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react-native
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: '@react-native/*'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     groups:
       development-dependencies:
         dependency-type: development
 
   - package-ecosystem: github-actions
     directory: /
+    open-pull-requests-limit: 2
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - '*'
