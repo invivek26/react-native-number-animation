@@ -1,6 +1,7 @@
 #import "NumberAnimationView.h"
 
 #import <React/RCTConversions.h>
+#import <React/RCTFont.h>
 
 #import <react/renderer/components/NumberAnimationViewSpec/ComponentDescriptors.h>
 #import <react/renderer/components/NumberAnimationViewSpec/EventEmitters.h>
@@ -121,6 +122,13 @@ static NSArray<NSString *> *NumberAnimationMakeStrings(const std::vector<std::st
   configuration.fontWeight = RCTNSStringFromString(newProps.fontWeight);
   configuration.italic = newProps.italic;
   configuration.fontVariant = NumberAnimationMakeStrings(newProps.fontVariant);
+  configuration.resolvedFont = [RCTFont updateFont:nil
+                                        withFamily:configuration.fontFamily
+                                              size:@(configuration.fontSize)
+                                            weight:configuration.fontWeight
+                                             style:configuration.italic ? @"italic" : @"normal"
+                                           variant:configuration.fontVariant
+                                   scaleMultiplier:1];
   configuration.letterSpacing = newProps.letterSpacing;
   configuration.lineHeight = newProps.lineHeight;
   configuration.textAlign = RCTNSStringFromString(newProps.textAlign);

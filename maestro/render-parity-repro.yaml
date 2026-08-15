@@ -1,0 +1,11 @@
+appId: com.invivek26.numberanimationexample
+name: Native renderer parity transition
+---
+- scrollUntilVisible:
+    element:
+      id: increment-button
+    direction: UP
+    speed: 60
+    visibilityPercentage: 100
+- tapOn:
+    id: increment-button

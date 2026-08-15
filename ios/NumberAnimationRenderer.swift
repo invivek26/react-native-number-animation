@@ -76,6 +76,7 @@ import UIKit
   public var fontWeight = "normal"
   public var italic = false
   public var fontVariant: [String] = []
+  public var resolvedFont: UIFont?
   public var letterSpacing: CGFloat = 0
   public var lineHeight: CGFloat = 0
   public var textAlign = "auto"
@@ -124,6 +125,7 @@ private struct TypographyKey: Hashable {
   let weight: String
   let italic: Bool
   let variants: String
+  let resolvedFontName: String
   let letterSpacing: CGFloat
   let lineHeight: CGFloat
   let color: UInt32
@@ -211,6 +213,13 @@ private enum GlyphRenderer {
 
   static func font(for configuration: NumberAnimationConfiguration) -> CTFont {
     let size = max(1, configuration.fontSize)
+    if let resolvedFont = configuration.resolvedFont {
+      return CTFontCreateWithFontDescriptor(
+        resolvedFont.fontDescriptor as CTFontDescriptor,
+        size,
+        nil
+      )
+    }
     let weight = uiFontWeight(configuration.fontWeight)
     var descriptor = fontDescriptor(
       family: configuration.fontFamily,
@@ -465,6 +474,7 @@ private enum GlyphRenderer {
       weight: configuration.fontWeight,
       italic: configuration.italic,
       variants: configuration.fontVariant.joined(separator: ","),
+      resolvedFontName: configuration.resolvedFont?.fontName ?? "",
       letterSpacing: configuration.letterSpacing,
       lineHeight: configuration.lineHeight,
       color: rgba(configuration.textColor),
@@ -891,7 +901,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
 
     configuration = next
     hasConfigured = true
-    isHidden = !shouldAnimate
+    isHidden = false
 
     guard shouldAnimate else {
       sessionGeneration += 1

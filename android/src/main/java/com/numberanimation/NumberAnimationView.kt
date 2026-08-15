@@ -49,24 +49,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     Color.TRANSPARENT,
     Shader.TileMode.CLAMP,
   )
-  private val horizontalFadeIn = LinearGradient(
-    0f,
-    0f,
-    1f,
-    0f,
-    Color.TRANSPARENT,
-    Color.BLACK,
-    Shader.TileMode.CLAMP,
-  )
-  private val horizontalFadeOut = LinearGradient(
-    0f,
-    0f,
-    1f,
-    0f,
-    Color.BLACK,
-    Color.TRANSPARENT,
-    Shader.TileMode.CLAMP,
-  )
   private val glyphWidths = HashMap<String, Float>()
   private val activeSlots = LinkedHashMap<String, RenderSlot>()
   private val exitingSlots = ArrayList<RenderSlot>()
@@ -164,7 +146,7 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
 
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
-    if (!committedProps.active || width <= 0 || height <= 0) return
+    if (width <= 0 || height <= 0) return
 
     val layer = if (committedProps.mask) {
       canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
@@ -345,24 +327,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     maskPaint.xfermode = DST_IN
     val verticalFade = minOf(max(1f, lineHeightPx * VERTICAL_FADE_RATIO), height * MAX_FADE_RATIO)
     drawVerticalMask(canvas, verticalFade)
-
-    var left = Float.POSITIVE_INFINITY
-    var right = Float.NEGATIVE_INFINITY
-    exitingSlots.forEach {
-      left = minOf(left, it.x.current)
-      right = max(right, it.x.current + it.width.current)
-    }
-    activeSlots.values.forEach {
-      left = minOf(left, it.x.current)
-      right = max(right, it.x.current + it.width.current)
-    }
-    if (left.isFinite() && right.isFinite()) {
-      val fade = max(1f, lineHeightPx * HORIZONTAL_FADE_RATIO)
-      val maskLeft = max(0f, left - fade)
-      val maskRight = minOf(width.toFloat(), right + fade)
-      val maskWidth = max(1f, maskRight - maskLeft)
-      drawHorizontalMask(canvas, maskLeft, maskRight, minOf(fade, maskWidth * MAX_FADE_RATIO))
-    }
     maskPaint.shader = null
     maskPaint.xfermode = null
   }
@@ -375,20 +339,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     canvas.drawRect(0f, fade, width.toFloat(), height - fade, maskPaint)
     applyMaskShader(verticalFadeOut, 1f, fade, 0f, height - fade)
     canvas.drawRect(0f, height - fade, width.toFloat(), height.toFloat(), maskPaint)
-  }
-
-  private fun drawHorizontalMask(canvas: Canvas, left: Float, right: Float, fade: Float) {
-    maskPaint.shader = null
-    maskPaint.color = Color.TRANSPARENT
-    canvas.drawRect(0f, 0f, left, height.toFloat(), maskPaint)
-    canvas.drawRect(right, 0f, width.toFloat(), height.toFloat(), maskPaint)
-    applyMaskShader(horizontalFadeIn, fade, 1f, left, 0f)
-    canvas.drawRect(left, 0f, left + fade, height.toFloat(), maskPaint)
-    maskPaint.shader = null
-    maskPaint.color = Color.BLACK
-    canvas.drawRect(left + fade, 0f, right - fade, height.toFloat(), maskPaint)
-    applyMaskShader(horizontalFadeOut, fade, 1f, right - fade, 0f)
-    canvas.drawRect(right - fade, 0f, right, height.toFloat(), maskPaint)
   }
 
   private fun applyMaskShader(shader: Shader, scaleX: Float, scaleY: Float, x: Float, y: Float) {
@@ -551,7 +501,6 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     const val VISIBLE_WHEEL_RANGE = 1.5f
     const val VISIBILITY_EPSILON = 0.001f
     const val VERTICAL_FADE_RATIO = 0.22f
-    const val HORIZONTAL_FADE_RATIO = 0.5f
     const val MAX_FADE_RATIO = 0.48f
     val DST_IN = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
 

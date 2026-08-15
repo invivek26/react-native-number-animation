@@ -216,6 +216,9 @@ React formats the value, splits it into stable semantic slots, and plans digit
 deltas. A Fabric codegen component sends that compact plan to native iOS and
 Android views. Native render loops own frame-by-frame digit, layout, and opacity
 updates, so the JavaScript thread is not asked to render every animation frame.
+The native renderer also owns the settled pixels, avoiding a post-animation
+geometry handoff to React Native `Text`. At rest, iOS keeps static Core Animation
+layers and Android schedules no frame callbacks.
 
 For the best results:
 

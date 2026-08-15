@@ -238,6 +238,7 @@ export const AnimatedNumber = forwardRef<
   const fontSize = requestedFontSize * effectiveFontScale;
   const formattedValue = presentation.formattedValue;
   const isMultiline = formattedValue.includes('\n');
+  const nativeRendererEnabled = animated && !isMultiline;
   const active = animated && !isMultiline && revision !== settledRevision;
   const latestCompletionCallback = useRef(onAnimationComplete);
   const latestStartCallback = useRef(onAnimationStart);
@@ -305,48 +306,50 @@ export const AnimatedNumber = forwardRef<
         allowFontScaling={allowFontScaling}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         numberOfLines={1}
-        style={[style, active && HIDDEN_TEXT_STYLE]}
+        style={[style, nativeRendererEnabled && HIDDEN_TEXT_STYLE]}
       >
         {formattedValue}
       </Text>
-      <NativeNumberAnimationView
-        {...toNativeTimingProps(animation)}
-        active={active}
-        digitGlyphs={[...presentation.digitGlyphs]}
-        fontFamily={flattenedStyle.fontFamily}
-        fontSize={fontSize}
-        fontVariant={
-          Array.isArray(flattenedStyle.fontVariant)
-            ? flattenedStyle.fontVariant
-            : typeof flattenedStyle.fontVariant === 'string'
-              ? [flattenedStyle.fontVariant]
-              : []
-        }
-        fontWeight={String(flattenedStyle.fontWeight ?? 'normal')}
-        formattedValue={formattedValue}
-        initialSlots={toInitialNativeSlots(
-          initialPresentation ?? committedPresentation.current
-        )}
-        italic={flattenedStyle.fontStyle === 'italic'}
-        letterSpacing={flattenedStyle.letterSpacing ?? 0}
-        lineHeight={
-          flattenedStyle.lineHeight == null
-            ? 0
-            : flattenedStyle.lineHeight * effectiveFontScale
-        }
-        mask={mask}
-        onAnimationComplete={handleAnimationComplete}
-        onAnimationStart={handleAnimationStart}
-        pointerEvents="none"
-        reduceMotion={reduceMotion}
-        revision={revision}
-        slots={toNativeSlots(transition.slots)}
-        style={NATIVE_STYLE}
-        textAlign={flattenedStyle.textAlign ?? 'auto'}
-        textColor={flattenedStyle.color}
-        trend={transition.trend}
-        writingDirection={flattenedStyle.writingDirection ?? 'auto'}
-      />
+      {nativeRendererEnabled ? (
+        <NativeNumberAnimationView
+          {...toNativeTimingProps(animation)}
+          active={active}
+          digitGlyphs={[...presentation.digitGlyphs]}
+          fontFamily={flattenedStyle.fontFamily}
+          fontSize={fontSize}
+          fontVariant={
+            Array.isArray(flattenedStyle.fontVariant)
+              ? flattenedStyle.fontVariant
+              : typeof flattenedStyle.fontVariant === 'string'
+                ? [flattenedStyle.fontVariant]
+                : []
+          }
+          fontWeight={String(flattenedStyle.fontWeight ?? 'normal')}
+          formattedValue={formattedValue}
+          initialSlots={toInitialNativeSlots(
+            initialPresentation ?? committedPresentation.current
+          )}
+          italic={flattenedStyle.fontStyle === 'italic'}
+          letterSpacing={flattenedStyle.letterSpacing ?? 0}
+          lineHeight={
+            flattenedStyle.lineHeight == null
+              ? 0
+              : flattenedStyle.lineHeight * effectiveFontScale
+          }
+          mask={mask}
+          onAnimationComplete={handleAnimationComplete}
+          onAnimationStart={handleAnimationStart}
+          pointerEvents="none"
+          reduceMotion={reduceMotion}
+          revision={revision}
+          slots={toNativeSlots(transition.slots)}
+          style={NATIVE_STYLE}
+          textAlign={flattenedStyle.textAlign ?? 'auto'}
+          textColor={flattenedStyle.color}
+          trend={transition.trend}
+          writingDirection={flattenedStyle.writingDirection ?? 'auto'}
+        />
+      ) : null}
     </View>
   );
 });
