@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up workspace
         uses: ./.github/actions/setup
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload dry-run package
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: react-native-number-animation-${{ inputs.channel }}-dry-run
           path: ${{ env.PACKED_TARBALL }}
