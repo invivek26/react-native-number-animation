@@ -72,23 +72,15 @@ for formatting and transition planning, and avoid adding per-frame bridge
 traffic or React renders. Include before/after profile evidence with changes
 that claim a performance improvement.
 
-## Changesets
+## Releases
 
-Add a changeset for user-visible changes:
+Use Conventional Commits so release notes remain readable. Maintainers use
+`bun run release` for stable releases and `bun run release:next` for `next`
+prereleases. Both commands run the complete verification suite before creating
+a version commit and tag.
 
-```sh
-bun changeset
-```
-
-Use:
-
-- `patch` for compatible fixes and performance improvements;
-- `minor` for backward-compatible API additions;
-- `major` for breaking API, behavior, or compatibility changes.
-
-CI, tests, and contributor-documentation-only changes do not require a
-changeset. Maintainers use the Release workflow for stable and `next` version
-pull requests. That workflow does not publish to npm.
+The GitHub Release workflow verifies and archives tagged releases. It does not
+publish to npm until trusted publishing is enabled for this repository.
 
 ## Pull requests
 

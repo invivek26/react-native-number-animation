@@ -8,7 +8,7 @@
 - [ ] Native example build(s), when applicable
 - [ ] Web export, when applicable
 - [ ] Rapid/interrupted updates and reduced motion, when applicable
-- [ ] Changeset added, or the change does not affect consumers
+- [ ] Public API and compatibility changes are documented
 
 ## Compatibility
 

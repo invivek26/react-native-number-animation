@@ -278,13 +278,12 @@ pipeline; this package does not target direct, unbundled Node.js execution.
 
 ## Release model
 
-Changes are described with [Changesets](https://github.com/changesets/changesets).
-Maintainers can prepare stable or `next` version pull requests, or download a
-dry-run package artifact, from the GitHub Release workflow. Tag builds create a
-GitHub release containing the exact tarball. No workflow publishes to npm;
-registry publication remains a manual maintainer action. The package metadata
-is prepared for npm trusted publishing with provenance when that final step is
-enabled.
+Maintainers use [release-it](https://github.com/release-it/release-it) to create
+version commits and tags, with `next` prereleases used to validate native ABI
+changes before stable releases. The GitHub Release workflow verifies and packs
+the tagged source, then creates a GitHub release containing the exact tarball.
+Registry publication remains an explicit maintainer action until npm trusted
+publishing is enabled; package metadata is already configured for provenance.
 
 ## Acknowledgements
 

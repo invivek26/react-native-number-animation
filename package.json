@@ -46,8 +46,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
-    "changeset": "changeset",
-    "version-packages": "changeset version"
+    "release": "release-it",
+    "release:next": "release-it --preRelease=next"
   },
   "keywords": [
     "react-native",
@@ -101,7 +101,6 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.25.1",
-    "@changesets/cli": "^2.29.7",
     "@eslint/compat": "^2.1.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
@@ -126,6 +125,7 @@
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-builder-bob": "^0.43.0",
+    "release-it": "^19.2.4",
     "turbo": "^2.9.16",
     "typescript": "^6.0.3"
   },
