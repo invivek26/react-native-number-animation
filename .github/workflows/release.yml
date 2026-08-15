@@ -15,10 +15,6 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  id-token: write
-
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -26,6 +22,8 @@ concurrency:
 jobs:
   package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -61,11 +59,75 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Create GitHub release for tag
+      - name: Upload tagged package
         if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-number-animation-${{ github.ref_name }}
+          path: ${{ env.PACKED_TARBALL }}
+          if-no-files-found: error
+          retention-days: 14
+
+  stage-npm:
+    if: github.event_name == 'push'
+    needs: package
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node for npm trusted publishing
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Install staged-publishing npm CLI
+        run: npm install --global npm@11.19.0
+
+      - name: Download verified package
+        uses: actions/download-artifact@v5
+        with:
+          name: react-native-number-animation-${{ github.ref_name }}
+          path: package-artifact
+
+      - name: Stage package on npm
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PUBLISH_TAG=latest
+          if [[ "${PACKAGE_VERSION}" == *-* ]]; then
+            PUBLISH_TAG=next
+          fi
+          PACKED_TARBALL=$(find package-artifact -name '*.tgz' -type f -print -quit)
+          test -n "${PACKED_TARBALL}"
+          npm stage publish "${PACKED_TARBALL}" --access public --tag "${PUBLISH_TAG}"
+
+  github-release:
+    if: github.event_name == 'push'
+    needs: stage-npm
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download staged package
+        uses: actions/download-artifact@v5
+        with:
+          name: react-native-number-animation-${{ github.ref_name }}
+          path: package-artifact
+
+      - name: Create GitHub release for tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          PACKED_TARBALL=$(find package-artifact -name '*.tgz' -type f -print -quit)
+          test -n "${PACKED_TARBALL}"
           RELEASE_FLAGS=()
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             RELEASE_FLAGS+=(--prerelease)

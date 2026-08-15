@@ -281,9 +281,10 @@ pipeline; this package does not target direct, unbundled Node.js execution.
 Maintainers use [release-it](https://github.com/release-it/release-it) to create
 version commits and tags, with `next` prereleases used to validate native ABI
 changes before stable releases. The GitHub Release workflow verifies and packs
-the tagged source, then creates a GitHub release containing the exact tarball.
-Registry publication remains an explicit maintainer action until npm trusted
-publishing is enabled; package metadata is already configured for provenance.
+the tagged source, submits that exact tarball to npm through stage-only trusted
+publishing, then creates a GitHub release. A maintainer reviews and approves the
+staged package with 2FA before it becomes public. No long-lived npm publishing
+token is stored in GitHub, and trusted publishing adds provenance automatically.
 
 ## Acknowledgements
 

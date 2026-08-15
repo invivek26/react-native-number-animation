@@ -80,7 +80,8 @@ prereleases. Both commands run the complete verification suite before creating
 a version commit and tag.
 
 The GitHub Release workflow verifies and archives tagged releases. It does not
-publish to npm until trusted publishing is enabled for this repository.
+publish directly to npm: stage-only trusted publishing submits the verified
+tarball for maintainer review, and a separate 2FA approval makes it public.
 
 ## Pull requests
 
