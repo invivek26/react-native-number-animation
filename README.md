@@ -1,8 +1,15 @@
 # react-native-number-animation
 
+[![npm version](https://img.shields.io/npm/v/react-native-number-animation.svg)](https://www.npmjs.com/package/react-native-number-animation)
+[![npm downloads](https://img.shields.io/npm/dm/react-native-number-animation.svg)](https://www.npmjs.com/package/react-native-number-animation)
+[![CI](https://github.com/invivek26/react-native-number-animation/actions/workflows/ci.yml/badge.svg)](https://github.com/invivek26/react-native-number-animation/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/react-native-number-animation.svg)](LICENSE)
+
 A native rolling-number component for React Native's New Architecture. It keeps
 digit, layout, and opacity motion on the native UI thread while React owns
 formatting and transition intent.
+
+Explore the interactive web interpretation at [viveks.app/open-source](https://viveks.app/open-source).
 
 ## Native on both platforms
 
@@ -344,3 +351,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the
 ## License
 
 [MIT](LICENSE)
+
+Maintained by [Vivek Indlebele Narasimha Prasad](https://viveks.app).
