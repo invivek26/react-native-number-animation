@@ -88,12 +88,12 @@
     "type": "git",
     "url": "git+https://github.com/invivek26/react-native-number-animation.git"
   },
-  "author": "Vivek Indlebele Narasimha Prasad <vivek@gamestock.app> (https://github.com/invivek26)",
+  "author": "Vivek Indlebele Narasimha Prasad <vivek@gamestock.app> (https://viveks.app)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/invivek26/react-native-number-animation/issues"
   },
-  "homepage": "https://github.com/invivek26/react-native-number-animation#readme",
+  "homepage": "https://viveks.app/open-source",
   "publishConfig": {
     "access": "public",
     "provenance": true,
