@@ -106,6 +106,21 @@ class NumberAnimationViewManager : SimpleViewManager<NumberAnimationView>(),
     view.pendingProps.fontSize = value.finiteOr(DEFAULT_FONT_SIZE)
   }
 
+  @ReactProp(name = "allowFontScaling", defaultBoolean = true)
+  override fun setAllowFontScaling(view: NumberAnimationView, value: Boolean) {
+    view.pendingProps.allowFontScaling = value
+  }
+
+  @ReactProp(name = "maxFontSizeMultiplier")
+  override fun setMaxFontSizeMultiplier(view: NumberAnimationView, value: Float) {
+    view.pendingProps.maxFontSizeMultiplier = value.finiteOr(0f)
+  }
+
+  @ReactProp(name = "fontScale", defaultFloat = 1f)
+  override fun setFontScale(view: NumberAnimationView, value: Float) {
+    view.pendingProps.fontScale = value.finiteOr(1f)
+  }
+
   @ReactProp(name = "fontWeight")
   override fun setFontWeight(view: NumberAnimationView, value: String?) {
     view.pendingProps.fontWeight = value

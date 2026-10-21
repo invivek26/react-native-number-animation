@@ -30,6 +30,9 @@ export interface NativeNumberAnimationProps extends ViewProps {
   textColor?: ColorValue;
   fontFamily?: string;
   fontSize: CodegenTypes.Float;
+  allowFontScaling?: CodegenTypes.WithDefault<boolean, true>;
+  maxFontSizeMultiplier?: CodegenTypes.WithDefault<CodegenTypes.Float, 0>;
+  fontScale?: CodegenTypes.WithDefault<CodegenTypes.Float, 1>;
   fontWeight?: string;
   italic: boolean;
   fontVariant: ReadonlyArray<string>;

@@ -8,6 +8,7 @@ import {
   type ComponentRef,
 } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -36,7 +37,10 @@ import {
 } from './motion/animation-policy';
 import { useNumberAnimationEnabled } from './number-animation-provider';
 import type { AnimatedNumberProps } from './types';
-import { resolveNativeFontWeight } from './typography';
+import {
+  resolveNativeFontMetrics,
+  resolveNativeFontWeight,
+} from './typography';
 import { useReducedMotion } from './use-reduced-motion';
 
 type NativeEvent = NativeSyntheticEvent<Readonly<{ revision: number }>>;
@@ -230,19 +234,15 @@ export const AnimatedNumber = forwardRef<
     continuous
   );
   const flattenedStyle = StyleSheet.flatten(style) ?? {};
-  const requestedFontSize = flattenedStyle.fontSize ?? 14;
-  const normalizedFontScale =
-    Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
-  const normalizedMaxFontSizeMultiplier =
-    maxFontSizeMultiplier != null &&
-    Number.isFinite(maxFontSizeMultiplier) &&
-    maxFontSizeMultiplier >= 1
-      ? maxFontSizeMultiplier
-      : Number.POSITIVE_INFINITY;
-  const effectiveFontScale = allowFontScaling
-    ? Math.min(normalizedFontScale, normalizedMaxFontSizeMultiplier)
-    : 1;
-  const fontSize = requestedFontSize * effectiveFontScale;
+  const fontMetrics = resolveNativeFontMetrics({
+    allowFontScaling,
+    fontScale,
+    fontSize: flattenedStyle.fontSize,
+    letterSpacing: flattenedStyle.letterSpacing,
+    lineHeight: flattenedStyle.lineHeight,
+    maxFontSizeMultiplier,
+    platform: Platform.OS,
+  });
   const formattedValue = presentation.formattedValue;
   const isMultiline = formattedValue.includes('\n');
   const { active, rendererEnabled: nativeRendererEnabled } =
@@ -339,10 +339,10 @@ export const AnimatedNumber = forwardRef<
       {nativeRendererEnabled ? (
         <NativeNumberAnimationView
           {...toNativeTimingProps(animation)}
+          {...fontMetrics}
           active={active}
           digitGlyphs={[...presentation.digitGlyphs]}
           fontFamily={flattenedStyle.fontFamily}
-          fontSize={fontSize}
           fontVariant={
             Array.isArray(flattenedStyle.fontVariant)
               ? flattenedStyle.fontVariant
@@ -356,12 +356,6 @@ export const AnimatedNumber = forwardRef<
             initialPresentation ?? committedPresentation.current
           )}
           italic={flattenedStyle.fontStyle === 'italic'}
-          letterSpacing={flattenedStyle.letterSpacing ?? 0}
-          lineHeight={
-            flattenedStyle.lineHeight == null
-              ? 0
-              : flattenedStyle.lineHeight * effectiveFontScale
-          }
           mask={mask}
           onAnimationComplete={handleAnimationComplete}
           onAnimationStart={handleAnimationStart}
