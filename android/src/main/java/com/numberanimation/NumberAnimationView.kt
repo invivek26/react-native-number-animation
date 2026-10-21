@@ -15,6 +15,7 @@ import android.view.Choreographer
 import android.view.View
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.react.views.text.ReactTypefaceUtils
+import kotlin.math.ceil
 import kotlin.math.max
 
 class NumberAnimationView : View, Choreographer.FrameCallback {
@@ -362,8 +363,9 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
   }
 
   private fun configurePaint() {
-    val size = PixelUtil.toPixelFromDIP(committedProps.fontSize).coerceAtLeast(1f)
-    letterSpacingPx = PixelUtil.toPixelFromDIP(committedProps.letterSpacing)
+    val size = ceil(committedProps.toFontPixels(committedProps.fontSize, committedProps.maxFontSizeMultiplier))
+      .coerceAtLeast(1f)
+    letterSpacingPx = committedProps.toFontPixels(committedProps.letterSpacing)
     textPaint.color = committedProps.textColor
     textPaint.textSize = size
     textPaint.typeface = ReactTypefaceUtils.applyStyles(
@@ -377,7 +379,7 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     val metrics = textPaint.fontMetrics
     val naturalHeight = metrics.descent - metrics.ascent
     lineHeightPx = if (committedProps.lineHeight > 0f) {
-      PixelUtil.toPixelFromDIP(committedProps.lineHeight)
+      committedProps.toFontPixels(committedProps.lineHeight)
     } else {
       naturalHeight
     }
@@ -551,6 +553,9 @@ private fun RendererProps.deepCopy(): RendererProps = RendererProps(
   textColor = textColor,
   fontFamily = fontFamily,
   fontSize = fontSize,
+  allowFontScaling = allowFontScaling,
+  maxFontSizeMultiplier = maxFontSizeMultiplier,
+  fontScale = fontScale,
   fontWeight = fontWeight,
   italic = italic,
   fontVariant = fontVariant,
@@ -576,6 +581,9 @@ private fun RendererProps.copyFrom(other: RendererProps) {
   textColor = other.textColor
   fontFamily = other.fontFamily
   fontSize = other.fontSize
+  allowFontScaling = other.allowFontScaling
+  maxFontSizeMultiplier = other.maxFontSizeMultiplier
+  fontScale = other.fontScale
   fontWeight = other.fontWeight
   italic = other.italic
   fontVariant = other.fontVariant
@@ -588,9 +596,16 @@ private fun RendererProps.copyFrom(other: RendererProps) {
   opacityMotion.copyFrom(other.opacityMotion)
 }
 
+// Mirrors React Native's TextAttributeProps so the digits scale like the hidden sizing Text.
+private fun RendererProps.toFontPixels(value: Float, maxFontScale: Float = Float.NaN): Float =
+  if (allowFontScaling) PixelUtil.toPixelFromSP(value, maxFontScale) else PixelUtil.toPixelFromDIP(value)
+
 private fun layoutStyleChanged(previous: RendererProps, current: RendererProps): Boolean =
   previous.fontFamily != current.fontFamily ||
     previous.fontSize != current.fontSize ||
+    previous.allowFontScaling != current.allowFontScaling ||
+    previous.maxFontSizeMultiplier != current.maxFontSizeMultiplier ||
+    previous.fontScale != current.fontScale ||
     previous.fontWeight != current.fontWeight ||
     previous.italic != current.italic ||
     previous.fontVariant != current.fontVariant ||
