@@ -116,6 +116,7 @@ static NSArray<NSString *> *NumberAnimationMakeStrings(const std::vector<std::st
   configuration.trend = newProps.trend;
   configuration.mask = newProps.mask;
   configuration.reduceMotion = newProps.reduceMotion;
+  configuration.respectMotionPreference = newProps.respectMotionPreference;
   configuration.textColor = RCTUIColorFromSharedColor(newProps.textColor) ?: UIColor.labelColor;
   configuration.fontFamily = newProps.fontFamily.empty() ? nil : RCTNSStringFromString(newProps.fontFamily);
   configuration.fontSize = newProps.fontSize;

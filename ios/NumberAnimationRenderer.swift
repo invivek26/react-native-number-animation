@@ -70,6 +70,7 @@ import UIKit
   public var trend = 0
   public var mask = true
   public var reduceMotion = false
+  public var respectMotionPreference = false
   public var textColor = UIColor.label
   public var fontFamily: String?
   public var fontSize: CGFloat = 14
@@ -945,7 +946,8 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     }
 
     beginSession(revision: next.revision)
-    if next.reduceMotion {
+    // Read synchronously so the first change is right before JS knows the setting.
+    if next.reduceMotion || (next.respectMotionPreference && UIAccessibility.isReduceMotionEnabled) {
       applyCrossfade(next)
       return
     }

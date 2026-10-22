@@ -103,3 +103,18 @@ test('keeps the last known value after the last listener leaves', async () => {
   subscribe(() => undefined);
   expect(getSnapshot()).toBe(false);
 });
+
+test('keeps a known reduced-motion setting when a later query fails', async () => {
+  queryResult = () => Promise.resolve(true);
+  const { getSnapshot, subscribe } = await loadStore();
+
+  const unsubscribe = subscribe(() => undefined);
+  await flushPromises();
+  unsubscribe();
+
+  queryResult = () => Promise.reject(new Error('unavailable'));
+  subscribe(() => undefined);
+  await flushPromises();
+
+  expect(getSnapshot()).toBe(true);
+});

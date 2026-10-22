@@ -31,13 +31,15 @@ const startListening = (): void => {
   listening = true;
   subscriptionGeneration += 1;
   const generation = subscriptionGeneration;
-  AccessibilityInfo.isReduceMotionEnabled()
-    .catch(() => false)
-    .then((value) => {
+  // A failed query keeps the last known value.
+  AccessibilityInfo.isReduceMotionEnabled().then(
+    (value) => {
       if (listening && generation === subscriptionGeneration) {
         setReduceMotion(value);
       }
-    });
+    },
+    () => undefined
+  );
   nativeSubscription = AccessibilityInfo.addEventListener(
     'reduceMotionChanged',
     (value) => {

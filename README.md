@@ -225,7 +225,9 @@ spoken description.
 
 `respectMotionPreference` defaults to `true` and listens to React Native's
 [`AccessibilityInfo`](https://reactnative.dev/docs/accessibilityinfo) reduced
-motion setting. Reduced motion keeps the readable value update while removing
+motion setting. iOS and Android also read the system setting natively on each
+update, so the first change is right before `AccessibilityInfo` answers.
+Reduced motion keeps the readable value update while removing
 the digit roll. Set it to `false` only when the surrounding experience provides
 an equivalent user-controlled motion setting. With `false`, digits roll on iOS
 and Android whatever the system setting is.

@@ -27,6 +27,7 @@ export interface NativeNumberAnimationProps extends ViewProps {
   trend: CodegenTypes.Int32;
   mask: boolean;
   reduceMotion: boolean;
+  respectMotionPreference: boolean;
   textColor?: ColorValue;
   fontFamily?: string;
   fontSize: CodegenTypes.Float;
