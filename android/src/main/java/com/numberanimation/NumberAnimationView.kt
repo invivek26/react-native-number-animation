@@ -10,6 +10,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.provider.Settings
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.View
@@ -101,7 +102,10 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
       seedSlots(committedProps.initialSlots.ifEmpty { committedProps.slots })
     }
 
-    if (committedProps.reduceMotion) {
+    // Read synchronously so the first change is right before JS knows the setting.
+    val systemReducesMotion =
+      committedProps.respectMotionPreference && isSystemReduceMotionEnabled(context)
+    if (committedProps.reduceMotion || systemReducesMotion) {
       startCrossfade(committedProps.slots, now)
     } else {
       transitionTo(committedProps.slots, now)
@@ -540,6 +544,12 @@ internal interface AnimationEventListener {
   fun onAnimationComplete(revision: Int)
 }
 
+// Same check as React Native's AccessibilityInfo on Android.
+private fun isSystemReduceMotionEnabled(context: Context): Boolean =
+  Settings.Global.getString(context.contentResolver, Settings.Global.TRANSITION_ANIMATION_SCALE)
+    ?.replace(',', '.')
+    ?.toFloatOrNull() == 0f
+
 private fun RendererProps.deepCopy(): RendererProps = RendererProps(
   active = active,
   revision = revision,
@@ -550,6 +560,7 @@ private fun RendererProps.deepCopy(): RendererProps = RendererProps(
   trend = trend,
   mask = mask,
   reduceMotion = reduceMotion,
+  respectMotionPreference = respectMotionPreference,
   textColor = textColor,
   fontFamily = fontFamily,
   fontSize = fontSize,
@@ -578,6 +589,7 @@ private fun RendererProps.copyFrom(other: RendererProps) {
   trend = other.trend
   mask = other.mask
   reduceMotion = other.reduceMotion
+  respectMotionPreference = other.respectMotionPreference
   textColor = other.textColor
   fontFamily = other.fontFamily
   fontSize = other.fontSize

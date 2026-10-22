@@ -70,6 +70,7 @@ import UIKit
   public var trend = 0
   public var mask = true
   public var reduceMotion = false
+  public var respectMotionPreference = false
   public var textColor = UIColor.label
   public var fontFamily: String?
   public var fontSize: CGFloat = 14
@@ -614,10 +615,12 @@ private final class DigitSlotLayer: NumberSlotLayer {
     atlas: GlyphAtlas,
     mask: Bool,
     timing: NumberAnimationTiming,
+    layoutTiming: NumberAnimationTiming?,
     animated: Bool
   ) {
     let previousAtlas = self.atlas
     let previousPhase = visiblePhase()
+    let previousWidth = rootLayer.presentation()?.bounds.width ?? rootLayer.bounds.width
     let atlasChanged = previousAtlas !== atlas
     self.text = text
     self.atlas = atlas
@@ -643,18 +646,56 @@ private final class DigitSlotLayer: NumberSlotLayer {
     setPhase(target)
     CATransaction.commit()
 
-    guard animated, timing.duration > 0, abs(target - normalized) > 0.0001 else {
+    if animated, timing.duration > 0, abs(target - normalized) > 0.0001 {
+      let animation = LayerAnimation.make(
+        keyPath: "position.y",
+        from: -normalized * atlas.rowHeight,
+        to: -target * atlas.rowHeight,
+        timing: timing
+      )
+      atlasLayer.add(animation, forKey: "number.phase")
+    } else {
       settle()
-      return
     }
+    if animated, let layoutTiming {
+      animateWidth(from: previousWidth, timing: layoutTiming)
+    }
+  }
 
-    let animation = LayerAnimation.make(
-      keyPath: "position.y",
-      from: -normalized * atlas.rowHeight,
-      to: -target * atlas.rowHeight,
+  // Width moves with the slot's x on the same timing, so neighbouring slots
+  // stay edge to edge while they slide (as on Android).
+  private func animateWidth(from previousWidth: CGFloat, timing: NumberAnimationTiming) {
+    settleWidth()
+    guard timing.duration > 0, abs(previousWidth - width) > 0.0001 else { return }
+    let widthAnimation = LayerAnimation.make(
+      keyPath: "bounds.size.width",
+      from: previousWidth,
+      to: width,
       timing: timing
     )
-    atlasLayer.add(animation, forKey: "number.phase")
+    rootLayer.add(widthAnimation, forKey: "number.width")
+    atlasLayer.add(
+      LayerAnimation.make(
+        keyPath: "position.x",
+        from: -(atlas.rowWidth - previousWidth) / 2,
+        to: -(atlas.rowWidth - width) / 2,
+        timing: timing
+      ),
+      forKey: "number.width"
+    )
+    guard let gradient = rootLayer.mask else { return }
+    gradient.add(widthAnimation, forKey: "number.width")
+    gradient.add(
+      LayerAnimation.make(keyPath: "position.x", from: previousWidth / 2, to: width / 2, timing: timing),
+      forKey: "number.width.x"
+    )
+  }
+
+  func settleWidth() {
+    rootLayer.removeAnimation(forKey: "number.width")
+    atlasLayer.removeAnimation(forKey: "number.width")
+    rootLayer.mask?.removeAnimation(forKey: "number.width")
+    rootLayer.mask?.removeAnimation(forKey: "number.width.x")
   }
 
   func settle() {
@@ -663,6 +704,7 @@ private final class DigitSlotLayer: NumberSlotLayer {
     atlasLayer.removeAllAnimations()
     setPhase(atlas.centeredPhase(for: digitValue))
     rootLayer.removeAllAnimations()
+    rootLayer.mask?.removeAllAnimations()
     rootLayer.opacity = 1
     CATransaction.commit()
   }
@@ -891,7 +933,6 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     pendingConfiguration = nil
     let firstConfiguration = !hasConfigured
     let shouldAnimate = next.active && next.formattedValue.contains("\n") == false
-    let reduceMotion = next.reduceMotion || UIAccessibility.isReduceMotionEnabled
 
     if firstConfiguration, shouldAnimate, !next.initialSlots.isEmpty {
       configuration = next
@@ -913,7 +954,8 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     }
 
     beginSession(revision: next.revision)
-    if reduceMotion {
+    // Read synchronously so the first change is right before JS knows the setting.
+    if next.reduceMotion || (next.respectMotionPreference && UIAccessibility.isReduceMotionEnabled) {
       applyCrossfade(next)
       return
     }
@@ -939,6 +981,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     let generation = sessionGeneration
     let scale = max(1, window?.screen.scale ?? UIScreen.main.scale)
     let targetKeys = Set(next.slots.map(\.key))
+    var createdKeys = Set<String>()
 
     let removedKeys = slotsByKey.keys.filter { !targetKeys.contains($0) }
     for key in removedKeys {
@@ -969,6 +1012,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
           )
           slotsByKey[slot.key] = digitLayer
           layer.addSublayer(digitLayer.rootLayer)
+          createdKeys.insert(slot.key)
         }
         digitLayer.update(
           text: slot.text,
@@ -977,6 +1021,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
           atlas: atlas,
           mask: next.mask,
           timing: next.digitTiming,
+          layoutTiming: createdKeys.contains(slot.key) ? nil : next.layoutTiming,
           animated: true
         )
         if slot.entering {
@@ -994,6 +1039,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
           symbolLayer = SymbolSlotLayer(key: slot.key, text: slot.text, glyph: glyph)
           slotsByKey[slot.key] = symbolLayer
           layer.addSublayer(symbolLayer.rootLayer)
+          createdKeys.insert(slot.key)
         }
         if slot.entering || contentChanged {
           animateOpacity(symbolLayer.rootLayer, from: 0, to: 1, timing: next.opacityTiming, animated: true)
@@ -1001,7 +1047,12 @@ private final class SymbolSlotLayer: NumberSlotLayer {
       }
     }
 
-    layoutSlots(next.slots.compactMap { slotsByKey[$0.key] }, configuration: next, animated: true)
+    layoutSlots(
+      next.slots.compactMap { slotsByKey[$0.key] },
+      configuration: next,
+      animated: true,
+      createdKeys: createdKeys
+    )
     finishSessionAfterAnimations(
       revision: next.revision,
       duration: max(
@@ -1069,7 +1120,8 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     _ orderedLayers: [NumberSlotLayer],
     configuration: NumberAnimationConfiguration,
     animated: Bool,
-    preserveActiveAnimations: Bool = false
+    preserveActiveAnimations: Bool = false,
+    createdKeys: Set<String> = []
   ) {
     let scale = max(1, window?.screen.scale ?? UIScreen.main.scale)
     let fractionalWidth = orderedLayers.reduce(CGFloat(0)) { $0 + $1.width }
@@ -1077,20 +1129,26 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     var x = horizontalOrigin(contentWidth: contentWidth, configuration: configuration)
     for slot in orderedLayers {
       let root = slot.rootLayer
-      let oldX = root.presentation()?.position.x ?? root.position.x
       let target = CGPoint(x: x, y: max(0, (bounds.height - root.bounds.height) / 2))
-      let hasActiveAnimation = root.animation(forKey: "number.x") != nil
+      // A new layer has no previous place, so it starts at its target (as on Android).
+      let oldX = createdKeys.contains(slot.key)
+        ? target.x
+        : root.presentation()?.position.x ?? root.position.x
       let targetChanged = abs(root.position.x - target.x) > 0.0001
       CATransaction.begin()
       CATransaction.setDisableActions(true)
-      if !preserveActiveAnimations || !hasActiveAnimation || targetChanged {
+      if !preserveActiveAnimations || targetChanged {
         root.removeAnimation(forKey: "number.x")
+      }
+      // A resize mid-roll moves every slot by the same amount: snap x and
+      // width together rather than restart x on a new timeline.
+      if preserveActiveAnimations, targetChanged {
+        (slot as? DigitSlotLayer)?.settleWidth()
       }
       root.position = target
       CATransaction.commit()
 
-      let shouldRetarget = preserveActiveAnimations && hasActiveAnimation && targetChanged
-      if (animated || shouldRetarget),
+      if animated,
          configuration.layoutTiming.duration > 0,
          abs(oldX - target.x) > 0.0001 {
         let animation = LayerAnimation.make(
@@ -1233,17 +1291,6 @@ private final class SymbolSlotLayer: NumberSlotLayer {
       queue: .main
     ) { _ in
       GlyphRenderer.clearCaches()
-    })
-    notificationTokens.append(center.addObserver(
-      forName: UIAccessibility.reduceMotionStatusDidChangeNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      guard UIAccessibility.isReduceMotionEnabled else { return }
-      self?.sessionGeneration += 1
-      self?.sessionRevision = nil
-      self?.removeCompletionSentinels()
-      self?.settle(removeSlots: false)
     })
   }
 

@@ -4,7 +4,8 @@ import { AccessibilityInfo } from 'react-native';
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
-let reduceMotion = true;
+// Motion is allowed until the system reports otherwise.
+let reduceMotion = false;
 let listening = false;
 let subscriptionGeneration = 0;
 let nativeSubscription: ReturnType<
@@ -30,13 +31,15 @@ const startListening = (): void => {
   listening = true;
   subscriptionGeneration += 1;
   const generation = subscriptionGeneration;
-  AccessibilityInfo.isReduceMotionEnabled()
-    .then((value) => {
+  // A failed query keeps the last known value.
+  AccessibilityInfo.isReduceMotionEnabled().then(
+    (value) => {
       if (listening && generation === subscriptionGeneration) {
         setReduceMotion(value);
       }
-    })
-    .catch(() => undefined);
+    },
+    () => undefined
+  );
   nativeSubscription = AccessibilityInfo.addEventListener(
     'reduceMotionChanged',
     (value) => {
@@ -60,18 +63,16 @@ const subscribe = (listener: Listener): (() => void) => {
     nativeSubscription = null;
     listening = false;
     subscriptionGeneration += 1;
-    reduceMotion = true;
   };
 };
 
 const emptySubscribe = (): (() => void) => () => undefined;
-const getSnapshot = (): boolean => (listening ? reduceMotion : true);
+const getSnapshot = (): boolean => reduceMotion;
 const getDisabledSnapshot = (): boolean => false;
-const getServerSnapshot = (): boolean => true;
 
 export const useReducedMotion = (enabled: boolean): boolean =>
   useSyncExternalStore(
     enabled ? subscribe : emptySubscribe,
     enabled ? getSnapshot : getDisabledSnapshot,
-    enabled ? getServerSnapshot : getDisabledSnapshot
+    enabled ? getSnapshot : getDisabledSnapshot
   );

@@ -361,6 +361,7 @@ export const AnimatedNumber = forwardRef<
           onAnimationStart={handleAnimationStart}
           pointerEvents="none"
           reduceMotion={reduceMotion}
+          respectMotionPreference={respectMotionPreference}
           revision={revision}
           slots={toNativeSlots(transition.slots)}
           style={NATIVE_STYLE}

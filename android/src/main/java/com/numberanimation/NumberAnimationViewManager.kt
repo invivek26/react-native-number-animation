@@ -91,6 +91,11 @@ class NumberAnimationViewManager : SimpleViewManager<NumberAnimationView>(),
     view.pendingProps.reduceMotion = value
   }
 
+  @ReactProp(name = "respectMotionPreference")
+  override fun setRespectMotionPreference(view: NumberAnimationView, value: Boolean) {
+    view.pendingProps.respectMotionPreference = value
+  }
+
   @ReactProp(name = "textColor", customType = "Color")
   override fun setTextColor(view: NumberAnimationView, value: Int?) {
     view.pendingProps.textColor = value ?: DEFAULT_TEXT_COLOR

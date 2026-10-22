@@ -47,6 +47,7 @@ internal data class RendererProps(
   var trend: Int = 0,
   var mask: Boolean = true,
   var reduceMotion: Boolean = false,
+  var respectMotionPreference: Boolean = false,
   var textColor: Int = DEFAULT_TEXT_COLOR,
   var fontFamily: String? = null,
   var fontSize: Float = DEFAULT_FONT_SIZE,
