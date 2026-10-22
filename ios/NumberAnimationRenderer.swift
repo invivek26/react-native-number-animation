@@ -924,7 +924,6 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     pendingConfiguration = nil
     let firstConfiguration = !hasConfigured
     let shouldAnimate = next.active && next.formattedValue.contains("\n") == false
-    let reduceMotion = next.reduceMotion || UIAccessibility.isReduceMotionEnabled
 
     if firstConfiguration, shouldAnimate, !next.initialSlots.isEmpty {
       configuration = next
@@ -946,7 +945,7 @@ private final class SymbolSlotLayer: NumberSlotLayer {
     }
 
     beginSession(revision: next.revision)
-    if reduceMotion {
+    if next.reduceMotion {
       applyCrossfade(next)
       return
     }
@@ -1279,17 +1278,6 @@ private final class SymbolSlotLayer: NumberSlotLayer {
       queue: .main
     ) { _ in
       GlyphRenderer.clearCaches()
-    })
-    notificationTokens.append(center.addObserver(
-      forName: UIAccessibility.reduceMotionStatusDidChangeNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      guard UIAccessibility.isReduceMotionEnabled else { return }
-      self?.sessionGeneration += 1
-      self?.sessionRevision = nil
-      self?.removeCompletionSentinels()
-      self?.settle(removeSlots: false)
     })
   }
 
