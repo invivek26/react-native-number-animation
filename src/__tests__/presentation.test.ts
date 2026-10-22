@@ -10,6 +10,9 @@ const slotSummary = (value: ReturnType<typeof createNumberPresentation>) =>
     text,
   }));
 
+const keyText = (value: ReturnType<typeof createNumberPresentation>) =>
+  value.slots.map(({ key, text }) => [key, text]);
+
 describe('createNumberPresentation', () => {
   test('gives every grouped integer digit a unique place-value key', () => {
     const presentation = createNumberPresentation({
@@ -288,34 +291,33 @@ describe('createNumberPresentation', () => {
     ]);
   });
 
-  test('keys each preformatted digit run by its own right-relative position', () => {
+  test('rolls only the first number in preformatted text', () => {
     const presentation = createNumberPresentation({
       value: 0,
-      formattedValue: 'Q12 / 345 kg',
+      formattedValue: 'Q12 / 34',
     });
 
-    expect(
-      presentation.slots
-        .filter(({ kind }) => kind === 'digit')
-        .map(({ digitValue, key }) => [key, digitValue])
-    ).toEqual([
-      ['run:1:1', 1],
-      ['run:1:0', 2],
-      ['run:2:2', 3],
-      ['run:2:1', 4],
-      ['run:2:0', 5],
+    expect(slotSummary(presentation)).toEqual([
+      { digitValue: -1, key: 'prefix:0', kind: 'symbol', text: 'Q' },
+      { digitValue: 1, key: 'integer:1', kind: 'digit', text: '1' },
+      { digitValue: 2, key: 'integer:0', kind: 'digit', text: '2' },
+      { digitValue: -1, key: 'suffix:0', kind: 'symbol', text: ' ' },
+      { digitValue: -1, key: 'suffix:1', kind: 'symbol', text: '/' },
+      { digitValue: -1, key: 'suffix:2', kind: 'symbol', text: ' ' },
+      { digitValue: -1, key: 'suffix:3', kind: 'symbol', text: '3' },
+      { digitValue: -1, key: 'suffix:4', kind: 'symbol', text: '4' },
     ]);
   });
 
-  test('recognizes Unicode decimal digits in preformatted runs', () => {
+  test('recognizes Unicode decimal digits in preformatted text', () => {
     const presentation = createNumberPresentation({
       value: 12,
       formattedValue: '١٢',
     });
 
     expect(slotSummary(presentation)).toEqual([
-      { digitValue: 1, key: 'run:1:1', kind: 'digit', text: '١' },
-      { digitValue: 2, key: 'run:1:0', kind: 'digit', text: '٢' },
+      { digitValue: 1, key: 'integer:1', kind: 'digit', text: '١' },
+      { digitValue: 2, key: 'integer:0', kind: 'digit', text: '٢' },
     ]);
     expect(presentation.digitGlyphs).toEqual([
       '٠',
@@ -328,6 +330,215 @@ describe('createNumberPresentation', () => {
       '٧',
       '٨',
       '٩',
+    ]);
+  });
+
+  test('groups commas between integer digits when formatToParts is missing', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      Intl.NumberFormat.prototype,
+      'formatToParts'
+    );
+
+    Object.defineProperty(Intl.NumberFormat.prototype, 'formatToParts', {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    });
+
+    try {
+      const whole = createNumberPresentation({
+        value: 1_234_567,
+        locales: 'en-US-x-groupfb',
+        format: { maximumFractionDigits: 0 },
+      });
+      const decimal = createNumberPresentation({
+        value: 1_234.5,
+        locales: 'en-US-x-groupfb',
+        format: { maximumFractionDigits: 1, minimumFractionDigits: 1 },
+      });
+
+      expect(keyText(whole)).toEqual([
+        ['integer:6', '1'],
+        ['group:1', ','],
+        ['integer:5', '2'],
+        ['integer:4', '3'],
+        ['integer:3', '4'],
+        ['group:0', ','],
+        ['integer:2', '5'],
+        ['integer:1', '6'],
+        ['integer:0', '7'],
+      ]);
+      expect(keyText(decimal)).toEqual([
+        ['integer:3', '1'],
+        ['group:0', ','],
+        ['integer:2', '2'],
+        ['integer:1', '3'],
+        ['integer:0', '4'],
+        ['decimal:0', '.'],
+        ['fraction:0', '5'],
+      ]);
+    } finally {
+      if (descriptor == null) {
+        delete (Intl.NumberFormat.prototype as { formatToParts?: unknown })
+          .formatToParts;
+      } else {
+        Object.defineProperty(
+          Intl.NumberFormat.prototype,
+          'formatToParts',
+          descriptor
+        );
+      }
+    }
+  });
+
+  test.each([
+    [
+      '$999,977',
+      [
+        ['prefix:0', '$'],
+        ['integer:5', '9'],
+        ['integer:4', '9'],
+        ['integer:3', '9'],
+        ['group:0', ','],
+        ['integer:2', '9'],
+        ['integer:1', '7'],
+        ['integer:0', '7'],
+      ],
+    ],
+    [
+      '$1,000,036',
+      [
+        ['prefix:0', '$'],
+        ['integer:6', '1'],
+        ['group:1', ','],
+        ['integer:5', '0'],
+        ['integer:4', '0'],
+        ['integer:3', '0'],
+        ['group:0', ','],
+        ['integer:2', '0'],
+        ['integer:1', '3'],
+        ['integer:0', '6'],
+      ],
+    ],
+    [
+      '0.15%',
+      [
+        ['integer:0', '0'],
+        ['decimal:0', '.'],
+        ['fraction:0', '1'],
+        ['fraction:1', '5'],
+        ['suffix:0', '%'],
+      ],
+    ],
+    [
+      '12.34%',
+      [
+        ['integer:1', '1'],
+        ['integer:0', '2'],
+        ['decimal:0', '.'],
+        ['fraction:0', '3'],
+        ['fraction:1', '4'],
+        ['suffix:0', '%'],
+      ],
+    ],
+    [
+      '5.655%',
+      [
+        ['integer:0', '5'],
+        ['decimal:0', '.'],
+        ['fraction:0', '6'],
+        ['fraction:1', '5'],
+        ['fraction:2', '5'],
+        ['suffix:0', '%'],
+      ],
+    ],
+    [
+      '-$5.00',
+      [
+        ['minusSign:0', '-'],
+        ['prefix:0', '$'],
+        ['integer:0', '5'],
+        ['decimal:0', '.'],
+        ['fraction:0', '0'],
+        ['fraction:1', '0'],
+      ],
+    ],
+    [
+      '+0.15%',
+      [
+        ['plusSign:0', '+'],
+        ['integer:0', '0'],
+        ['decimal:0', '.'],
+        ['fraction:0', '1'],
+        ['fraction:1', '5'],
+        ['suffix:0', '%'],
+      ],
+    ],
+    [
+      'Score: -5',
+      [
+        ['prefix:0', 'S'],
+        ['prefix:1', 'c'],
+        ['prefix:2', 'o'],
+        ['prefix:3', 'r'],
+        ['prefix:4', 'e'],
+        ['prefix:5', ':'],
+        ['prefix:6', ' '],
+        ['minusSign:0', '-'],
+        ['integer:0', '5'],
+      ],
+    ],
+    [
+      '1.234,56',
+      [
+        ['integer:3', '1'],
+        ['group:0', '.'],
+        ['integer:2', '2'],
+        ['integer:1', '3'],
+        ['integer:0', '4'],
+        ['decimal:0', ','],
+        ['fraction:0', '5'],
+        ['fraction:1', '6'],
+      ],
+    ],
+    [
+      '0,15 %',
+      [
+        ['integer:0', '0'],
+        ['decimal:0', ','],
+        ['fraction:0', '1'],
+        ['fraction:1', '5'],
+        ['suffix:0', ' '],
+        ['suffix:1', '%'],
+      ],
+    ],
+    [
+      '1\u202f234\u202f567',
+      [
+        ['integer:6', '1'],
+        ['group:1', '\u202f'],
+        ['integer:5', '2'],
+        ['integer:4', '3'],
+        ['integer:3', '4'],
+        ['group:0', '\u202f'],
+        ['integer:2', '5'],
+        ['integer:1', '6'],
+        ['integer:0', '7'],
+      ],
+    ],
+  ])('keys preformatted %p by place across separators', (text, expected) => {
+    expect(
+      keyText(createNumberPresentation({ value: 0, formattedValue: text }))
+    ).toEqual(expected);
+  });
+
+  test('keeps literal slots for preformatted text without a number', () => {
+    expect(
+      slotSummary(createNumberPresentation({ value: 0, formattedValue: 'N/A' }))
+    ).toEqual([
+      { digitValue: -1, key: 'literal:0', kind: 'symbol', text: 'N' },
+      { digitValue: -1, key: 'literal:1', kind: 'symbol', text: '/' },
+      { digitValue: -1, key: 'literal:2', kind: 'symbol', text: 'A' },
     ]);
   });
 

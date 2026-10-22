@@ -134,6 +134,11 @@ If the first render should animate from another preformatted string, both
 />
 ```
 
+The first number in `formattedValue` rolls by place value, across group and
+decimal separators, so `$999,977` to `$1,000,036` keeps each digit, comma and the
+`$` in place. Text around that number, including any later number, changes as
+plain text.
+
 Do not combine `formattedValue` with `locales`, `format`, `prefix`, or `suffix`.
 The TypeScript types enforce these input modes.
 

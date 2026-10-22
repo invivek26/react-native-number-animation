@@ -99,7 +99,7 @@ describe('planTransition', () => {
     ).toEqual([1, 10, 10, 10, 10]);
   });
 
-  test('keeps continuous carry isolated to each preformatted digit run', () => {
+  test('keeps continuous carry inside the first preformatted number', () => {
     const previous = createNumberPresentation({
       formattedValue: '10 / 50',
       value: 10,
@@ -110,10 +110,18 @@ describe('planTransition', () => {
     });
 
     expect(
-      digitPlans(planTransition(previous, next, 'auto', true)).map(
-        ({ delta }) => delta
+      planTransition(previous, next, 'auto', true).slots.map(
+        ({ delta, key }) => [key, delta]
       )
-    ).toEqual([1, 10, 0, 0]);
+    ).toEqual([
+      ['integer:1', 1],
+      ['integer:0', 10],
+      ['suffix:0', 0],
+      ['suffix:1', 0],
+      ['suffix:2', 0],
+      ['suffix:3', 0],
+      ['suffix:4', 0],
+    ]);
   });
 
   test('does not animate slots when values have the same formatted output', () => {
@@ -151,7 +159,39 @@ describe('planTransition', () => {
     const next = createNumberPresentation({ value: 1, formattedValue: '1' });
 
     expect(digitPlans(planTransition(previous, next, 'auto', true))).toEqual([
-      { delta: 2, digitValue: 1, entering: false, key: 'run:1:0' },
+      { delta: 2, digitValue: 1, entering: false, key: 'integer:0' },
+    ]);
+  });
+
+  test('rolls preformatted digits by place when a group is added', () => {
+    const previous = createNumberPresentation({
+      value: 999_977,
+      formattedValue: '$999,977',
+    });
+    const next = createNumberPresentation({
+      value: 1_000_036,
+      formattedValue: '$1,000,036',
+    });
+    const plan = planTransition(previous, next, 'auto', false);
+
+    expect(
+      plan.slots.map(({ delta, entering, key, text }) => [
+        key,
+        text,
+        entering,
+        delta,
+      ])
+    ).toEqual([
+      ['prefix:0', '$', false, 0],
+      ['integer:6', '1', true, 1],
+      ['group:1', ',', true, 0],
+      ['integer:5', '0', false, 1],
+      ['integer:4', '0', false, 1],
+      ['integer:3', '0', false, 1],
+      ['group:0', ',', false, 0],
+      ['integer:2', '0', false, 1],
+      ['integer:1', '3', false, 6],
+      ['integer:0', '6', false, 9],
     ]);
   });
 });
