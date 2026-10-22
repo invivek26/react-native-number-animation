@@ -197,22 +197,27 @@ const createFallbackParts = (
     }
   }
 
-  return graphemes.map((text, index) => {
-    if (isLocalizedDigit(text, digitGlyphs)) {
-      const type =
-        exponentStart != null && index >= exponentStart
-          ? 'exponentInteger'
-          : decimalIndex >= 0 && index > decimalIndex
-            ? 'fraction'
-            : 'integer';
-      return { type, value: text };
+  const types = graphemes.map((text, index): Intl.NumberFormatPart['type'] => {
+    if (!isLocalizedDigit(text, digitGlyphs)) {
+      return index === decimalIndex ? 'decimal' : 'literal';
     }
 
-    return {
-      type: index === decimalIndex ? 'decimal' : 'literal',
-      value: text,
-    };
+    if (exponentStart != null && index >= exponentStart) {
+      return 'exponentInteger';
+    }
+
+    return decimalIndex >= 0 && index > decimalIndex ? 'fraction' : 'integer';
   });
+
+  return graphemes.map((text, index) => ({
+    type:
+      types[index] === 'literal' &&
+      types[index - 1] === 'integer' &&
+      types[index + 1] === 'integer'
+        ? 'group'
+        : (types[index] ?? 'literal'),
+    value: text,
+  }));
 };
 
 const getNumberFormatParts = (
@@ -299,51 +304,176 @@ const createIntlSlots = (
   return slots;
 };
 
+const NUMBER_SEPARATORS = new Set([
+  ',',
+  '.',
+  ' ',
+  '\u00a0',
+  '\u2009',
+  '\u202f',
+  "'",
+  '\u2019',
+  '\u066b',
+  '\u066c',
+]);
+
+const GROUP_ONLY_SEPARATORS = new Set([
+  ' ',
+  '\u00a0',
+  '\u2009',
+  '\u202f',
+  "'",
+  '\u2019',
+  '\u066c',
+]);
+
+const SIGN_PART_TYPES = new Map([
+  ['-', 'minusSign'],
+  ['\u2212', 'minusSign'],
+  ['+', 'plusSign'],
+]);
+
+// ponytail: no locale here, so a lone "," before exactly three digits is read as
+// grouping ("1,000") and a lone "." as a decimal ("1.000" in de-DE reads as 1.0).
+const findDecimalIndex = (
+  graphemes: readonly string[],
+  separators: readonly number[],
+  end: number
+): number => {
+  const last = separators[separators.length - 1];
+  const text = last == null ? undefined : graphemes[last];
+  if (last == null || text == null || GROUP_ONLY_SEPARATORS.has(text)) {
+    return -1;
+  }
+
+  const occurrences = separators.filter(
+    (index) => graphemes[index] === text
+  ).length;
+  if (occurrences > 1) {
+    return -1;
+  }
+
+  const isThousandsComma =
+    separators.length === 1 && text === ',' && end - last === 3;
+  return isThousandsComma ? -1 : last;
+};
+
+type PreformattedLayout = Readonly<{
+  start: number;
+  end: number;
+  decimalIndex: number;
+  signIndex: number;
+  integerPlaces: ReadonlyMap<number, number>;
+  groupOrdinals: ReadonlyMap<number, number>;
+}>;
+
+const getPreformattedKey = (
+  text: string,
+  index: number,
+  layout: PreformattedLayout
+): string => {
+  const { start, end, decimalIndex, signIndex } = layout;
+  if (index === signIndex) {
+    return `${SIGN_PART_TYPES.get(text)}:0`;
+  }
+
+  if (index < start) {
+    return `prefix:${signIndex >= 0 && index > signIndex ? index - 1 : index}`;
+  }
+
+  if (index > end) {
+    return `suffix:${index - end - 1}`;
+  }
+
+  if (index === decimalIndex) {
+    return 'decimal:0';
+  }
+
+  const groupOrdinal = layout.groupOrdinals.get(index);
+  if (groupOrdinal != null) {
+    return `group:${groupOrdinal}`;
+  }
+
+  if (decimalIndex >= 0 && index > decimalIndex) {
+    return `fraction:${index - decimalIndex - 1}`;
+  }
+
+  return `integer:${layout.integerPlaces.get(index)}`;
+};
+
+const toOrdinalsFromRight = (
+  indices: readonly number[]
+): ReadonlyMap<number, number> =>
+  new Map(
+    indices.map((index, ordinal) => [index, indices.length - 1 - ordinal])
+  );
+
 const createPreformattedSlots = (
   formattedValue: string,
   digitGlyphs: readonly string[]
 ): NumberSlot[] => {
   const graphemes = splitGraphemes(formattedValue);
-  const runPositions = new Map<number, number>();
-  let run = 0;
-  let inDigitRun = false;
+  const digitValues = graphemes.map((text) => toDigitValue(text, digitGlyphs));
+  const isDigitAt = (index: number) => (digitValues[index] ?? -1) >= 0;
+  const start = digitValues.findIndex((digitValue) => digitValue >= 0);
 
-  graphemes.forEach((text, index) => {
-    const isDigit =
-      toDigitValue(text, digitGlyphs) >= 0 || /^\p{Nd}$/u.test(text);
-    if (isDigit && !inDigitRun) {
-      run += 1;
+  if (start < 0) {
+    return graphemes.map((text, index) => ({
+      digitValue: -1,
+      key: `literal:${index}`,
+      kind: 'symbol',
+      text,
+    }));
+  }
+
+  // The number is the first run of digits joined by single separators.
+  let end = start;
+  for (let index = start + 1; index < graphemes.length; index += 1) {
+    if (isDigitAt(index)) {
+      end = index;
+      continue;
     }
-    inDigitRun = isDigit;
-    if (isDigit) {
-      runPositions.set(index, run);
+    if (
+      !NUMBER_SEPARATORS.has(graphemes[index] ?? '') ||
+      !isDigitAt(index + 1)
+    ) {
+      break;
+    }
+  }
+
+  const spanIndices = Array.from(
+    { length: end - start + 1 },
+    (_, offset) => start + offset
+  );
+  const separators = spanIndices.filter((index) => !isDigitAt(index));
+  const decimalIndex = findDecimalIndex(graphemes, separators, end);
+  const integerEnd = decimalIndex < 0 ? end : decimalIndex - 1;
+  let signIndex = -1;
+  graphemes.slice(0, start).forEach((text, index) => {
+    if (SIGN_PART_TYPES.has(text)) {
+      signIndex = index;
     }
   });
 
+  const layout: PreformattedLayout = {
+    start,
+    end,
+    decimalIndex,
+    signIndex,
+    integerPlaces: toOrdinalsFromRight(
+      spanIndices.filter((index) => index <= integerEnd && isDigitAt(index))
+    ),
+    groupOrdinals: toOrdinalsFromRight(
+      separators.filter((index) => index !== decimalIndex)
+    ),
+  };
+
   return graphemes.map((text, index) => {
-    const digitValue = toDigitValue(text, digitGlyphs);
-    const runIndex = runPositions.get(index);
-
-    if (runIndex == null || digitValue < 0) {
-      return {
-        digitValue: -1,
-        key: `literal:${index}`,
-        kind: 'symbol',
-        text,
-      };
-    }
-
-    let digitsToRight = 0;
-    for (let cursor = index + 1; cursor < graphemes.length; cursor += 1) {
-      if (runPositions.get(cursor) === runIndex) {
-        digitsToRight += 1;
-      }
-    }
-
+    const isNumberDigit = index >= start && index <= end && isDigitAt(index);
     return {
-      digitValue,
-      key: `run:${runIndex}:${digitsToRight}`,
-      kind: 'digit',
+      digitValue: isNumberDigit ? (digitValues[index] ?? -1) : -1,
+      key: getPreformattedKey(text, index, layout),
+      kind: isNumberDigit ? 'digit' : 'symbol',
       text,
     };
   });

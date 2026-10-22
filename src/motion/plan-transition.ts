@@ -55,7 +55,7 @@ type DigitPosition = Readonly<{
 }>;
 
 const getDigitPosition = (slot: NumberSlot): DigitPosition | undefined => {
-  const [type, firstPosition, secondPosition] = slot.key.split(':');
+  const [type, firstPosition] = slot.key.split(':');
 
   if (type === 'integer' && firstPosition != null) {
     return { domain: 'number', rank: Number(firstPosition) };
@@ -67,10 +67,6 @@ const getDigitPosition = (slot: NumberSlot): DigitPosition | undefined => {
 
   if (type === 'exponentInteger' && firstPosition != null) {
     return { domain: 'exponent', rank: Number(firstPosition) };
-  }
-
-  if (type === 'run' && firstPosition != null && secondPosition != null) {
-    return { domain: `run:${firstPosition}`, rank: Number(secondPosition) };
   }
 
   return undefined;
