@@ -1,6 +1,8 @@
 // Drives the real NumberAnimationRenderer through $105,174.71 <-> $1,049,482.14
 // and checks where each slot starts its slide: new slots start at their final
-// x, and kept slots never overlap while x and width animate together.
+// x, and kept slots never overlap while x and width animate together. Also
+// checks that a zero-duration retarget and a mid-roll resize leave no stale
+// layout animations behind.
 import UIKit
 
 func slot(_ key: String, _ text: String, _ delta: Int = 0, entering: Bool = false) -> NumberAnimationSlot {
@@ -99,6 +101,77 @@ for align in ["left", "center", "right"] {
   shrinking.applyConfiguration(config(1, "$1,049,482.14", big, align: align))
   shrinking.applyConfiguration(config(2, "$105,174.71", shrink, align: align))
   check("\(align) shrink", shrinking)
+}
+
+let sameCount = [
+  slot("prefix:0", "$"), slot("integer:5", "2", 1), slot("integer:4", "0"), slot("integer:3", "5"),
+  slot("group:0", ","), slot("integer:2", "1"), slot("integer:1", "7"), slot("integer:0", "4"),
+  slot("decimal:0", "."), slot("fraction:0", "7"), slot("fraction:1", "2", 1),
+]
+for align in ["left", "center", "right"] {
+  let renderer = makeRenderer()
+  renderer.applyConfiguration(config(1, "$105,174.71", small, align: align))
+  renderer.applyConfiguration(config(2, "$205,174.72", sameCount, align: align))
+  check("\(align) same digit count", renderer)
+}
+
+let layoutChannels = ["number.x", "number.width", "number.width.x"]
+
+func layoutAnimations(_ layer: CALayer) -> [String] {
+  [layer, layer.sublayers?.first, layer.mask].compactMap { $0 }.flatMap { part in
+    layoutChannels.filter { part.animation(forKey: $0) != nil }
+  }
+}
+
+func visibleSlots(_ renderer: NumberAnimationRenderer) -> [CALayer] {
+  (renderer.layer.sublayers ?? []).filter { $0.animation(forKey: "number.session") == nil && $0.opacity > 0 }
+}
+
+// Interrupt a width change with a zero-duration layout retarget.
+do {
+  let renderer = makeRenderer()
+  let one = config(1, "1", [slot("integer:0", "1")], align: "left")
+  let zero = config(2, "0", [slot("integer:0", "0", -1)], align: "left")
+  let back = config(3, "1", [slot("integer:0", "1", 1)], align: "left")
+  back.layoutTiming = timing(0)
+  renderer.applyConfiguration(one)
+  let oneWidth = visibleSlots(renderer).first?.bounds.width ?? 0
+  renderer.applyConfiguration(zero)
+  renderer.applyConfiguration(back)
+  for layer in visibleSlots(renderer) {
+    let stale = layoutAnimations(layer)
+    if !stale.isEmpty {
+      failures.append("zero-duration retarget: stale \(stale) animations")
+    }
+    if abs(layer.bounds.width - oneWidth) > 0.01 {
+      failures.append(String(format: "zero-duration retarget: width %.2f, expected %.2f", layer.bounds.width, oneWidth))
+    }
+  }
+}
+
+// Resize the view while digits are mid-roll: layout snaps, the roll goes on.
+do {
+  let renderer = makeRenderer()
+  renderer.applyConfiguration(config(1, "$105,174.71", small, align: "center"))
+  renderer.applyConfiguration(config(2, "$1,049,482.14", grow, align: "center"))
+  renderer.frame = CGRect(x: 0, y: 0, width: 500, height: 60)
+  renderer.layoutIfNeeded()
+  let slots = visibleSlots(renderer).sorted { $0.position.x < $1.position.x }
+  for layer in slots {
+    let stale = layoutAnimations(layer)
+    if !stale.isEmpty {
+      failures.append(String(format: "mid-roll resize: slot at x=%.2f keeps %@", layer.position.x, stale.description))
+    }
+  }
+  for (a, b) in zip(slots, slots.dropFirst()) where abs(a.position.x + a.bounds.width - b.position.x) > 0.01 {
+    failures.append(String(format: "mid-roll resize: slots not edge to edge: %.2f+%.2f vs %.2f", a.position.x, a.bounds.width, b.position.x))
+  }
+  if !slots.contains(where: { $0.sublayers?.first?.animation(forKey: "number.phase") != nil }) {
+    failures.append("mid-roll resize: digit roll stopped")
+  }
+  if !(renderer.layer.sublayers ?? []).contains(where: { $0.animation(forKey: "number.session") != nil }) {
+    failures.append("mid-roll resize: session no longer waits to complete")
+  }
 }
 
 failures.forEach { print("FAIL", $0) }

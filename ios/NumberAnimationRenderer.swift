@@ -665,6 +665,7 @@ private final class DigitSlotLayer: NumberSlotLayer {
   // Width moves with the slot's x on the same timing, so neighbouring slots
   // stay edge to edge while they slide (as on Android).
   private func animateWidth(from previousWidth: CGFloat, timing: NumberAnimationTiming) {
+    settleWidth()
     guard timing.duration > 0, abs(previousWidth - width) > 0.0001 else { return }
     let widthAnimation = LayerAnimation.make(
       keyPath: "bounds.size.width",
@@ -688,6 +689,13 @@ private final class DigitSlotLayer: NumberSlotLayer {
       LayerAnimation.make(keyPath: "position.x", from: previousWidth / 2, to: width / 2, timing: timing),
       forKey: "number.width.x"
     )
+  }
+
+  func settleWidth() {
+    rootLayer.removeAnimation(forKey: "number.width")
+    atlasLayer.removeAnimation(forKey: "number.width")
+    rootLayer.mask?.removeAnimation(forKey: "number.width")
+    rootLayer.mask?.removeAnimation(forKey: "number.width.x")
   }
 
   func settle() {
@@ -1126,18 +1134,21 @@ private final class SymbolSlotLayer: NumberSlotLayer {
       let oldX = createdKeys.contains(slot.key)
         ? target.x
         : root.presentation()?.position.x ?? root.position.x
-      let hasActiveAnimation = root.animation(forKey: "number.x") != nil
       let targetChanged = abs(root.position.x - target.x) > 0.0001
       CATransaction.begin()
       CATransaction.setDisableActions(true)
-      if !preserveActiveAnimations || !hasActiveAnimation || targetChanged {
+      if !preserveActiveAnimations || targetChanged {
         root.removeAnimation(forKey: "number.x")
+      }
+      // A resize mid-roll moves every slot by the same amount: snap x and
+      // width together rather than restart x on a new timeline.
+      if preserveActiveAnimations, targetChanged {
+        (slot as? DigitSlotLayer)?.settleWidth()
       }
       root.position = target
       CATransaction.commit()
 
-      let shouldRetarget = preserveActiveAnimations && hasActiveAnimation && targetChanged
-      if (animated || shouldRetarget),
+      if animated,
          configuration.layoutTiming.duration > 0,
          abs(oldX - target.x) > 0.0001 {
         let animation = LayerAnimation.make(
