@@ -140,6 +140,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Check iOS renderer layout
+        run: sh scripts/ios-layout-check.sh
+
       - name: Set up workspace
         uses: ./.github/actions/setup
 

@@ -52,6 +52,7 @@ bun run lint
 bun run typecheck
 bun test
 bun run build
+bun run test:ios-layout # macOS only: real iOS renderer layout check
 bun run --cwd example build:web
 ```
 

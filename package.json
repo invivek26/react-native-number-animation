@@ -43,6 +43,7 @@
     "format:check": "prettier --check .",
     "prepack": "bun run clean && bun run build",
     "test": "bun test",
+    "test:ios-layout": "sh scripts/ios-layout-check.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
