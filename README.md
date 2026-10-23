@@ -42,16 +42,16 @@ Explore the interactive web interpretation at [viveks.app/open-source](https://v
 
 ## Compatibility
 
-| Requirement  | Supported                                   |
-| ------------ | ------------------------------------------- |
-| React Native | 0.85.x                                      |
-| React        | 19.2.x                                      |
-| Expo         | SDK 56 development builds and prebuilt apps |
-| iOS          | 17 and newer                                |
-| Android      | API 24 and newer                            |
-| Architecture | New Architecture (Fabric) only              |
-| Web          | Static, accessible formatted text           |
-| Expo Go      | No                                          |
+| Requirement  | Supported                                         |
+| ------------ | ------------------------------------------------- |
+| React Native | 0.85.x to 0.88.x                                  |
+| React        | 19.2.x and 19.3.x                                 |
+| Expo         | SDK 56 to 58 development builds and prebuilt apps |
+| iOS          | 17 and newer                                      |
+| Android      | API 24 and newer                                  |
+| Architecture | New Architecture (Fabric) only                    |
+| Web          | Static, accessible formatted text                 |
+| Expo Go      | No                                                |
 
 This package contains custom native code, so it cannot run in Expo Go. Use an
 [Expo development build](https://docs.expo.dev/develop/development-builds/introduction/)
