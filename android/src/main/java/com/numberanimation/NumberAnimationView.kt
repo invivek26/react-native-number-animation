@@ -125,6 +125,16 @@ class NumberAnimationView : View, Choreographer.FrameCallback {
     invalidate()
   }
 
+  /**
+   * React dropped the view while its screen may still be drawing it through an
+   * exit animation, so stop animating but keep the last digits on screen.
+   * Clearing them is left to [resetForRecycle], before the view is reused.
+   */
+  internal fun releaseForDrop() {
+    settleAndCancel()
+    eventListener = null
+  }
+
   internal fun resetForRecycle() {
     settleAll()
     stopFrames()

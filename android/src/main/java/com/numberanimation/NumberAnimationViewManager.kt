@@ -49,9 +49,15 @@ class NumberAnimationViewManager : SimpleViewManager<NumberAnimationView>(),
   }
 
   override fun onDropViewInstance(view: NumberAnimationView) {
-    view.resetForRecycle()
+    view.releaseForDrop()
     super.onDropViewInstance(view)
   }
+
+  override fun prepareToRecycleView(
+    reactContext: ThemedReactContext,
+    view: NumberAnimationView,
+  ): NumberAnimationView? =
+    super.prepareToRecycleView(reactContext, view)?.also { it.resetForRecycle() }
 
   @ReactProp(name = "active")
   override fun setActive(view: NumberAnimationView, value: Boolean) { view.pendingProps.active = value }
